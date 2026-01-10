@@ -13,10 +13,14 @@ import java.util.List;
 public class LoginPage {
     WebDriver driver;
     WebDriverWait wait;
+    private static final int DEFAULT_TIMEOUT = 10;
+    private static final int HEADLESS_TIMEOUT = 20;
 
     public LoginPage(WebDriver driver) {
         this.driver = driver;
-        wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        // Use longer timeout in headless mode for CI/CD stability
+        int timeout = base.DriverFactory.isHeadlessModeEnabled() ? HEADLESS_TIMEOUT : DEFAULT_TIMEOUT;
+        wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
     }
 
     public void enterUsername(String email) {
@@ -31,7 +35,14 @@ public class LoginPage {
 
     public void clickLoginButton() {
         ExtentReportManager.logStep("Click Login button");
-        wait.until(ExpectedConditions.elementToBeClickable(LoginPageLocators.LOGIN_BUTTON)).click();
+        WebElement loginBtn = wait.until(ExpectedConditions.elementToBeClickable(LoginPageLocators.LOGIN_BUTTON));
+
+        // Use JavaScript click in headless mode to avoid click intercept issues
+        if (base.DriverFactory.isHeadlessModeEnabled()) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
+        } else {
+            loginBtn.click();
+        }
     }
 
     public void enterOTP(String otp) {

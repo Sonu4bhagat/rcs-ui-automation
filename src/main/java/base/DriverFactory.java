@@ -39,6 +39,9 @@ public class DriverFactory {
         driver.get().manage().window().maximize();
     }
 
+    // Store headless mode state for access by other classes
+    private static boolean headlessModeEnabled = false;
+
     /**
      * Determines if headless mode should be enabled.
      * System property takes precedence over config file.
@@ -47,21 +50,32 @@ public class DriverFactory {
         // Priority 1: System property (for CI/CD override via -Dbrowser.headless=true)
         String systemProp = System.getProperty("browser.headless");
         if (systemProp != null) {
-            return Boolean.parseBoolean(systemProp);
+            headlessModeEnabled = Boolean.parseBoolean(systemProp);
+            return headlessModeEnabled;
         }
 
         // Priority 2: Config file property
         try {
             String configProp = ConfigReader.get("browser.headless");
             if (configProp != null) {
-                return Boolean.parseBoolean(configProp);
+                headlessModeEnabled = Boolean.parseBoolean(configProp);
+                return headlessModeEnabled;
             }
         } catch (Exception e) {
             // Config not available, use default
         }
 
         // Default: GUI mode (false)
+        headlessModeEnabled = false;
         return false;
+    }
+
+    /**
+     * Public method to check if running in headless mode.
+     * Useful for tests that need to adjust wait times for CI/CD.
+     */
+    public static boolean isHeadlessModeEnabled() {
+        return headlessModeEnabled;
     }
 
     public static WebDriver getDriver() {

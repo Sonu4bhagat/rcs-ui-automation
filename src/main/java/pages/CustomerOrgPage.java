@@ -12,10 +12,14 @@ import java.util.List;
 public class CustomerOrgPage {
     WebDriver driver;
     WebDriverWait wait;
+    private static final int DEFAULT_TIMEOUT = 10;
+    private static final int HEADLESS_TIMEOUT = 20;
 
     public CustomerOrgPage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        // Use longer timeout in headless mode for CI/CD stability
+        int timeout = base.DriverFactory.isHeadlessModeEnabled() ? HEADLESS_TIMEOUT : DEFAULT_TIMEOUT;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
     }
 
     public void navigateToCustomerOrg() {
