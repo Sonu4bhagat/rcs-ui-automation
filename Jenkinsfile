@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                    url: 'YOUR_REPO_URL_HERE'
+                    url: 'https://github.com/Sonu4bhagat/rcs-ui-automation.git'
             }
         }
 
