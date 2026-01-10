@@ -18,7 +18,10 @@ pipeline {
         stage('Build & Run Tests') {
             steps {
                 // Enable headless mode for CI/CD execution
-                bat 'mvn clean test -Dbrowser.headless=true'
+                // Using catchError to continue even if tests fail
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    bat 'mvn clean test -Dbrowser.headless=true'
+                }
             }
         }
 
@@ -26,7 +29,7 @@ pipeline {
             steps {
                 // Archive test reports
                 publishHTML(target: [
-                    allowMissing: false,
+                    allowMissing: true,
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'test-output',
@@ -50,14 +53,33 @@ pipeline {
     post {
         always {
             echo 'Execution completed'
-            // Clean workspace after build (optional)
-            // cleanWs()
+            
+            // Send email notification
+            emailext(
+                subject: "Jenkins Build ${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>RCS Automation Test Report</h2>
+                    <p><b>Build Status:</b> ${currentBuild.currentResult}</p>
+                    <p><b>Job:</b> ${env.JOB_NAME}</p>
+                    <p><b>Build Number:</b> ${env.BUILD_NUMBER}</p>
+                    <p><b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    <p><b>Duration:</b> ${currentBuild.durationString}</p>
+                    <hr>
+                    <p>Check the attached report or visit the build URL for details.</p>
+                """,
+                to: 'aryan.sonu7562@gmail.com',
+                mimeType: 'text/html',
+                attachmentsPattern: 'test-output/ExtentReport.html'
+            )
         }
         success {
             echo 'Automation Passed ✅'
         }
         failure {
             echo 'Automation Failed ❌'
+        }
+        unstable {
+            echo 'Automation Unstable ⚠️ (Some tests failed)'
         }
     }
 }
