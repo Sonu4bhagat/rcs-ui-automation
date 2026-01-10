@@ -1,0 +1,10 @@
+<extentreports>
+    <configuration>
+        <reportName>RCS Automation Report</reportName>
+        <documentTitle>RCS Test Execution</documentTitle>
+        <theme>standard</theme>
+        <encoding>utf-8</encoding>
+        <protocol>https</protocol>
+        <timeStampFormat>MMM dd, yyyy HH:mm:ss</timeStampFormat>
+    </configuration>
+</extentreports>
