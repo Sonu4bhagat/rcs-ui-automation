@@ -25,27 +25,11 @@ pipeline {
             }
         }
 
-        stage('Publish Reports') {
+        stage('Archive Reports') {
             steps {
-                // Archive test reports
-                publishHTML(target: [
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: 'test-output',
-                    reportFiles: 'ExtentReport.html',
-                    reportName: 'Extent Report'
-                ])
-                
-                // Archive TestNG reports
-                publishHTML(target: [
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: 'target/surefire-reports',
-                    reportFiles: 'index.html',
-                    reportName: 'TestNG Report'
-                ])
+                // Archive test artifacts
+                archiveArtifacts artifacts: 'test-output/**/*', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'target/surefire-reports/**/*', allowEmptyArchive: true
             }
         }
     }
@@ -54,23 +38,19 @@ pipeline {
         always {
             echo 'Execution completed'
             
-            // Send email notification
-            emailext(
-                subject: "Jenkins Build ${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """
-                    <h2>RCS Automation Test Report</h2>
-                    <p><b>Build Status:</b> ${currentBuild.currentResult}</p>
-                    <p><b>Job:</b> ${env.JOB_NAME}</p>
-                    <p><b>Build Number:</b> ${env.BUILD_NUMBER}</p>
-                    <p><b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
-                    <p><b>Duration:</b> ${currentBuild.durationString}</p>
-                    <hr>
-                    <p>Check the attached report or visit the build URL for details.</p>
-                """,
-                to: 'aryan.sonu7562@gmail.com',
-                mimeType: 'text/html',
-                attachmentsPattern: 'test-output/ExtentReport.html'
-            )
+            // Send email notification using basic mail
+            mail to: 'aryan.sonu7562@gmail.com',
+                 subject: "Jenkins Build ${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: """
+RCS Automation Test Report
+===========================
+Build Status: ${currentBuild.currentResult}
+Job: ${env.JOB_NAME}
+Build Number: ${env.BUILD_NUMBER}
+Build URL: ${env.BUILD_URL}
+
+Check the build URL for detailed reports.
+                 """
         }
         success {
             echo 'Automation Passed ✅'
