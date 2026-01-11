@@ -37,12 +37,22 @@ public class LoginPage {
         ExtentReportManager.logStep("Click Login button");
         WebElement loginBtn = wait.until(ExpectedConditions.elementToBeClickable(LoginPageLocators.LOGIN_BUTTON));
 
+        String currentUrl = driver.getCurrentUrl();
+        System.out.println("URL before login click: " + currentUrl);
+
         // Use JavaScript click in headless mode to avoid click intercept issues
         if (base.DriverFactory.isHeadlessModeEnabled()) {
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
+            // Wait for page transition in headless mode
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+            }
         } else {
             loginBtn.click();
         }
+
+        System.out.println("URL after login click: " + driver.getCurrentUrl());
     }
 
     public void enterOTP(String otp) {
