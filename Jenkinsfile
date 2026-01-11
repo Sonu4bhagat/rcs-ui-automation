@@ -76,7 +76,8 @@ pipeline {
                 def statusEmoji = failedTests > 0 ? '❌' : '✅'
                 
                 // Send email with test summary
-                mail to: 'aryan.sonu7562@gmail.com',
+                // To add more recipients, separate emails with a comma: 'email1@gmail.com, email2@company.com'
+                mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
                      subject: "Jenkins Build ${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                      body: """
 ==========================================
