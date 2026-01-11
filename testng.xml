@@ -1,11 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <suite name="RCS Automation Test Suite" verbose="1">
-    <!-- Listener removed - ExtentReports handled by BaseTest to avoid duplicate entries -->
+    <!-- ExtentReports handled by BaseTest to avoid duplicate entries -->
     
+    <!-- Login Tests -->
     <test name="Login Tests" preserve-order="true">
         <classes>
             <class name="tests.LoginTest"/>
+        </classes>
+    </test>
+    
+    <!-- Enterprise Tests -->
+    <test name="Enterprise Dashboard Navigation" preserve-order="true">
+        <classes>
+            <class name="tests.EnterpriseDashboardNavigationTest"/>
+        </classes>
+    </test>
+    
+    <test name="Enterprise Services Tab" preserve-order="true">
+        <classes>
+            <class name="tests.EnterpriseServicesTabTest"/>
+        </classes>
+    </test>
+    
+    <test name="Enterprise API Documentation" preserve-order="true">
+        <classes>
+            <class name="tests.EnterpriseAPIDocumentationTest"/>
+        </classes>
+    </test>
+    
+    <test name="Enterprise Wallet Tab" preserve-order="true">
+        <classes>
+            <class name="tests.EnterpriseWalletTabTest"/>
+        </classes>
+    </test>
+    
+    <test name="Enterprise Roles Management" preserve-order="true">
+        <classes>
+            <class name="tests.EnterpriseRolesManagementTest"/>
+        </classes>
+    </test>
+    
+    <test name="Enterprise Reports Tab" preserve-order="true">
+        <classes>
+            <class name="tests.EnterpriseReportsTabTest"/>
+        </classes>
+    </test>
+    
+    <test name="Enterprise Rate Card Tab" preserve-order="true">
+        <classes>
+            <class name="tests.EnterpriseRateCardTabTest"/>
+        </classes>
+    </test>
+    
+    <test name="Enterprise Control Center" preserve-order="true">
+        <classes>
+            <class name="tests.EnterpriseControlCenterTabTest"/>
+        </classes>
+    </test>
+    
+    <test name="Enterprise RCS Assistant Flow" preserve-order="true">
+        <classes>
+            <class name="tests.EnterpriseRCSAssistantFlowTest"/>
+        </classes>
+    </test>
+    
+    <!-- Super Admin Tests -->
+    <test name="Super Admin Customer Org" preserve-order="true">
+        <classes>
+            <class name="tests.SuperAdminCustomerOrgTest"/>
+        </classes>
+    </test>
+    
+    <test name="Super Admin Dashboard" preserve-order="true">
+        <classes>
+            <class name="tests.SuperAdminDashboardTest"/>
+        </classes>
+    </test>
+    
+    <test name="Super Admin Roles Management" preserve-order="true">
+        <classes>
+            <class name="tests.SuperAdminRolesManagementTest"/>
+        </classes>
+    </test>
+    
+    <test name="Super Admin Team Management" preserve-order="true">
+        <classes>
+            <class name="tests.SuperAdminTeamManagementTest"/>
+        </classes>
+    </test>
+    
+    <test name="Super Admin API Documentation" preserve-order="true">
+        <classes>
+            <class name="tests.SuperAdminAPIAndDocumentationTest"/>
+        </classes>
+    </test>
+    
+    <test name="Super Admin Service Node SSO" preserve-order="true">
+        <classes>
+            <class name="tests.SuperAdminServiceNodeSSOTest"/>
         </classes>
     </test>
 </suite>
