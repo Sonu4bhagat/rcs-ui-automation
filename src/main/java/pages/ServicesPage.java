@@ -6,6 +6,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import utils.HeadlessHelper;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
@@ -17,14 +18,18 @@ public class ServicesPage {
 
     public ServicesPage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        // Use longer timeout in headless mode
+        int timeout = base.DriverFactory.isHeadlessModeEnabled() ? 20 : 15;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
     }
 
     public void clickServicesTab() {
         System.out.println("Clicking on Services Tab...");
         System.out.println("Current URL before: " + driver.getCurrentUrl());
+        HeadlessHelper.waitForPageLoad(driver);
 
-        wait.until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.SERVICES_TAB)).click();
+        WebElement servicesTab = wait.until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.SERVICES_TAB));
+        HeadlessHelper.safeClick(driver, servicesTab);
         System.out.println("Clicked on Services Tab.");
 
         // Wait for URL to contain 'services' or for Services page header to appear
