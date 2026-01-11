@@ -47,28 +47,66 @@ public class ExtentReportManager {
                     .apply();
 
             // Custom CSS for enhanced dashboard charts and images
-            String customCSS = "/* Larger charts for better visibility */" +
-                    ".dashboard-view .card-body canvas { min-height: 200px !important; }" +
-                    "/* Ensure screenshots are visible and clickable */" +
-                    ".test-content img { max-width: 100%; height: auto; cursor: pointer; border: 1px solid #444; border-radius: 4px; }"
-                    +
-                    ".test-content img:hover { border-color: #00aaff; box-shadow: 0 0 10px rgba(0,170,255,0.5); }" +
-                    "/* Better pass/fail badges */" +
-                    ".badge.pass-bg { background-color: #28a745 !important; }" +
-                    ".badge.fail-bg { background-color: #dc3545 !important; }" +
-                    "/* Enhanced system info table */" +
-                    ".sysenv-container .table td { font-size: 14px; }" +
-                    "/* Card styling */" +
-                    ".card { box-shadow: 0 4px 6px rgba(0,0,0,0.3); }";
+            String customCSS =
+                    // Dashboard charts - make them larger and more visible
+                    ".dashboard-view .card { min-height: 250px !important; margin-bottom: 20px; }" +
+                            ".dashboard-view canvas { min-height: 220px !important; }" +
+                            ".dashboard-view .card-header { font-size: 16px; font-weight: bold; }" +
+
+                            // Test list items - better visibility and hover effects
+                            ".test-list .test-item { padding: 12px !important; margin: 4px 0; border-radius: 6px; transition: all 0.2s; }"
+                            +
+                            ".test-list .test-item:hover { background: rgba(255,255,255,0.1) !important; transform: translateX(5px); }"
+                            +
+
+                            // Screenshots - visible and clickable
+                            ".test-content img, .media img { max-width: 100%; height: auto; cursor: pointer; border: 2px solid #555; border-radius: 6px; margin: 10px 0; }"
+                            +
+                            ".test-content img:hover, .media img:hover { border-color: #00aaff; box-shadow: 0 0 15px rgba(0,170,255,0.6); }"
+                            +
+
+                            // Pass/Fail badges - more prominent
+                            ".badge-success, .pass-bg { background-color: #28a745 !important; font-size: 13px !important; padding: 5px 10px !important; }"
+                            +
+                            ".badge-danger, .fail-bg { background-color: #dc3545 !important; font-size: 13px !important; padding: 5px 10px !important; }"
+                            +
+                            ".badge-warning, .skip-bg { background-color: #ffc107 !important; font-size: 13px !important; padding: 5px 10px !important; }"
+                            +
+
+                            // Step logs - better readability
+                            ".test-steps .log { padding: 8px 15px !important; margin: 3px 0; border-radius: 4px; }" +
+
+                            // Navigation - better visibility
+                            ".side-nav .nav-link { padding: 12px 20px !important; font-size: 14px !important; }" +
+                            ".side-nav .nav-link:hover { background: rgba(255,255,255,0.15) !important; }" +
+                            ".side-nav .nav-link.active { background: #007bff !important; }" +
+
+                            // Cards and containers
+                            ".card { box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important; border: none !important; }" +
+                            ".card-body { padding: 20px !important; }" +
+
+                            // System info table
+                            ".sysenv-container .table td { font-size: 14px; padding: 10px !important; }" +
+                            ".sysenv-container .table { margin-bottom: 0; }" +
+
+                            // Report title - more prominent
+                            ".report-name { font-size: 24px !important; font-weight: bold !important; }";
 
             sparkReporter.config().setCss(customCSS);
 
-            // Custom JS for image lightbox effect
+            // Custom JS for image lightbox and better interactivity
             String customJS = "document.addEventListener('click', function(e) {" +
-                    "  if(e.target.tagName === 'IMG' && e.target.closest('.test-content')) {" +
+                    "  if(e.target.tagName === 'IMG' && (e.target.closest('.test-content') || e.target.closest('.media'))) {"
+                    +
                     "    window.open(e.target.src, '_blank');" +
                     "  }" +
-                    "});";
+                    "});" +
+                    // Expand all test details by default for better visibility
+                    "setTimeout(function() {" +
+                    "  document.querySelectorAll('.test-item.has-log').forEach(function(el) {" +
+                    "    el.classList.add('expanded');" +
+                    "  });" +
+                    "}, 500);";
             sparkReporter.config().setJs(customJS);
 
             // Attach reporter to ExtentReports instance
