@@ -25,7 +25,29 @@ public class ServicesPage {
         System.out.println("Clicking on Services Tab...");
         System.out.println("Current URL before: " + driver.getCurrentUrl());
 
-        wait.until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.SERVICES_TAB)).click();
+        try {
+            // Robustly wait for sidebar/header to ensure we are on a page with the menu
+            wait.until(ExpectedConditions.or(
+                    ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.PAGE_HEADER),
+                    ExpectedConditions.visibilityOfElementLocated(
+                            By.xpath("//div[contains(@class, 'sidenav') or contains(@class, 'menu')]"))));
+
+            WebElement servicesTab = wait
+                    .until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.SERVICES_TAB));
+            servicesTab.click();
+        } catch (Exception e) {
+            System.out.println("Standard click failed/timed out. Trying JS Click...");
+            try {
+                WebElement servicesTab = driver.findElement(ServicesPageLocators.SERVICES_TAB);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", servicesTab);
+                Thread.sleep(500);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", servicesTab);
+            } catch (Exception ex) {
+                System.out.println("JS Click also failed: " + ex.getMessage());
+                throw new RuntimeException("Failed to click Services tab", ex);
+            }
+        }
+
         System.out.println("Clicked on Services Tab.");
 
         // Wait for URL to contain 'services' or for Services page header to appear
@@ -50,7 +72,7 @@ public class ServicesPage {
                                 "//*[contains(text(), 'SMS') or contains(text(), 'RCS') or contains(text(), 'WABA')]"))));
                 System.out.println("Services page loaded successfully - service cards or header found.");
             } catch (Exception e) {
-                System.out.println("Warning: Could not verify service cards/header, but continuing...");
+                System.out.println("Warning: Could not verify service cards/header but continuing...");
             }
 
         } catch (Exception e) {

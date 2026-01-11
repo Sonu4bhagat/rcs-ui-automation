@@ -37,21 +37,45 @@ public class BaseTest {
         test = ExtentReportManager.createTest(method.getName());
         ExtentReportManager.resetStepCounter(); // Reset step counter for each new test
 
-        // Ensure we are on the login page ONLY if retainSession is false
-        if (driver != null && !retainSession) {
+        // Robust Session Check
+        if (driver != null) {
             String currentUrl = driver.getCurrentUrl();
-            String targetUrl = ConfigReader.get("url");
-            try {
-                // Simple logic: if not matching target, go there.
-                // Enhanced logic: if executing sequential flow, we trust the previous state
-                if (!currentUrl.equals(targetUrl) && !currentUrl.contains("dashboard")) {
-                    // Verify if we are already logged in?
-                    // For now, strict adherence to retainSession flag
+            String targetUrl = ConfigReader.get("url"); // Login URL
+            boolean isOnLoginPage = currentUrl.contains("login") || currentUrl.equals(targetUrl);
+            boolean isOnDashboard = currentUrl.contains("dashboard") || currentUrl.contains("customer");
+
+            System.out.println(
+                    "DEBUG: Test=" + method.getName() + " URL=" + currentUrl + " RetainSession=" + retainSession);
+
+            if (retainSession) {
+                // If we want to retain session, but we are back on login page (e.g. prev test
+                // logged out or crashed)
+                if (isOnLoginPage) {
+                    System.out.println(
+                            "WARN: retainSession=true but on Login page. Forcing navigation to Login to allow re-login.");
+                    // We can't auto-login here because BaseTest doesn't know WHICH role to use
+                    // (SuperAdmin/Enterprise).
+                    // However, by being on the login page, the test's login check logic (if it
+                    // exists) might work.
+                    // IMPORTANT: Most tests call `loginPage.loginWith...`. If that method sees
+                    // dashboard, it skips login.
+                    // If it sees login page, it logs in. So ensuring we are purely on login page is
+                    // good.
+                    if (!currentUrl.equals(targetUrl)) {
+                        driver.get(targetUrl);
+                    }
+                } else if (!isOnDashboard) {
+                    // We are somewhere else (e.g. deep link).
+                    // If the test expects to start from a clean state (Dashboard), we might need to
+                    // navigate there?
+                    // For now, let's leave it.
+                }
+            } else {
+                // !retainSession => Ensure we are at Login Page
+                if (!isOnLoginPage) {
                     System.out.println("Navigating to login page for test: " + method.getName());
                     driver.get(targetUrl);
                 }
-            } catch (Exception e) {
-                System.out.println("Navigation error in BeforeMethod: " + e.getMessage());
             }
         }
     }

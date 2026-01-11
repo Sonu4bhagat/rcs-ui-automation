@@ -327,19 +327,41 @@ public class LoginPage {
 
             // 1. Click Profile Menu
             ExtentReportManager.logStep("Click Profile menu");
-            WebElement profileMenu = wait
-                    .until(ExpectedConditions.elementToBeClickable(LoginPageLocators.PROFILE_MENU));
-            profileMenu.click();
+
+            // Wait for any overlay to disappear (e.g., toast messages, spinners)
+            try {
+                WebDriverWait waitShort = new WebDriverWait(driver, Duration.ofSeconds(3));
+                waitShort.until(ExpectedConditions
+                        .invisibilityOfElementLocated(By.xpath("//div[contains(@class, 'cdk-overlay-backdrop')]")));
+            } catch (Exception e) {
+                // Ignore if timeout, just proceed
+            }
+
+            try {
+                WebElement profileMenu = wait
+                        .until(ExpectedConditions.elementToBeClickable(LoginPageLocators.PROFILE_MENU));
+                profileMenu.click();
+            } catch (Exception e) {
+                System.out.println("Standard click on profile menu failed. Trying JS Click...");
+                WebElement profileMenu = driver.findElement(LoginPageLocators.PROFILE_MENU);
+                JavascriptExecutor js = (JavascriptExecutor) driver;
+                js.executeScript("arguments[0].click();", profileMenu);
+            }
 
             // RETRY LOGIC: Check if Sign Out is visible, if not, retry click with JS
             try {
                 // Short wait to see if menu opens
-                new WebDriverWait(driver, Duration.ofSeconds(2))
+                new WebDriverWait(driver, Duration.ofSeconds(3))
                         .until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.SIGN_OUT_BUTTON));
             } catch (TimeoutException e) {
                 System.out.println("Menu did not open. Retrying click with JS...");
-                JavascriptExecutor js = (JavascriptExecutor) driver;
-                js.executeScript("arguments[0].click();", profileMenu);
+                try {
+                    WebElement profileMenu = driver.findElement(LoginPageLocators.PROFILE_MENU);
+                    JavascriptExecutor js = (JavascriptExecutor) driver;
+                    js.executeScript("arguments[0].click();", profileMenu);
+                } catch (Exception ex) {
+                    // ignore
+                }
             }
             System.out.println("Clicked profile menu.");
 
@@ -350,7 +372,7 @@ public class LoginPage {
             // Retry with JS if standard click fails
             try {
                 wait.until(ExpectedConditions.elementToBeClickable(signOutBtn)).click();
-            } catch (ElementClickInterceptedException e) {
+            } catch (Exception e) {
                 System.out.println("Sign Out click intercepted. Using JS Click...");
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", signOutBtn);
             }
@@ -361,7 +383,7 @@ public class LoginPage {
                     .until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.CONFIRM_LOGOUT_BUTTON));
             try {
                 wait.until(ExpectedConditions.elementToBeClickable(confirmBtn)).click();
-            } catch (ElementClickInterceptedException e) {
+            } catch (Exception e) {
                 System.out.println("Confirm logout click intercepted. Using JS Click...");
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", confirmBtn);
             }
