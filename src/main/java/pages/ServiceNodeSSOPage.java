@@ -380,31 +380,68 @@ public class ServiceNodeSSOPage {
     /**
      * Navigate back to Service Node SSO page (useful after testing a service)
      */
+    /**
+     * Store the main window handle before performing actions that open new windows
+     */
+    private String mainWindowHandle;
+
+    public void setMainWindowHandle() {
+        this.mainWindowHandle = driver.getWindowHandle();
+    }
+
+    /**
+     * Navigate back to Service Node SSO page (useful after testing a service)
+     */
     public void navigateBackToSSO() {
         System.out.println("Navigating back to Service Node SSO page...");
         try {
-            // Option 1: Use browser back
-            driver.navigate().back();
-            Thread.sleep(2000);
+            // Check how many windows are open
+            if (driver.getWindowHandles().size() > 1) {
+                // If we are in a child window/tab, close it and switch back
+                System.out.println("Closing child window and returning to main...");
+                driver.close();
+                if (mainWindowHandle != null) {
+                    driver.switchTo().window(mainWindowHandle);
+                } else {
+                    // Fallback if main handle wasn't set (switch to the last remaining one)
+                    for (String handle : driver.getWindowHandles()) {
+                        driver.switchTo().window(handle);
+                    }
+                }
+            } else {
+                if (mainWindowHandle != null) {
+                    try {
+                        driver.switchTo().window(mainWindowHandle);
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                }
+            }
 
-            // Option 2: Or click on SSO menu again if needed
-            if (!getCurrentURL().contains("service-nodes-sso") && !getCurrentURL().contains("sso")) {
+            // Always ensure we are actually on the SSO page
+            if (!getCurrentURL().contains("service-nodes-sso")) {
+                System.out.println("URL check failed, clicking menu explicitly...");
                 navigateToServiceNodeSSO();
             }
 
             // Wait for page to load
-            wait.until(ExpectedConditions.visibilityOfElementLocated(
-                    ServiceNodeSSOPageLocators.PAGE_HEADER));
+            wait.until(ExpectedConditions.or(
+                    ExpectedConditions.visibilityOfElementLocated(ServiceNodeSSOPageLocators.PAGE_HEADER),
+                    ExpectedConditions.urlContains("service-nodes-sso")));
             Thread.sleep(1000);
 
             System.out.println("✓ Back to Service Node SSO page");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.err.println("Thread interrupted: " + e.getMessage());
             throw new RuntimeException("Navigation back failed", e);
         } catch (Exception e) {
             System.err.println("Failed to navigate back: " + e.getMessage());
-            throw new RuntimeException("Navigation back failed", e);
+            // Try emergency fallback
+            try {
+                navigateToServiceNodeSSO();
+            } catch (Exception ex) {
+                throw new RuntimeException("Navigation back failed", e);
+            }
         }
     }
 
@@ -413,15 +450,14 @@ public class ServiceNodeSSOPage {
      */
     public void switchToNewWindow() {
         try {
-            String originalWindow = driver.getWindowHandle();
-            Thread.sleep(2000);
+            setMainWindowHandle(); // Remember where we came from
+            Thread.sleep(2000); // Give time for new window to open
 
             for (String windowHandle : driver.getWindowHandles()) {
-                if (!windowHandle.equals(originalWindow)) {
+                if (!windowHandle.equals(mainWindowHandle)) {
                     driver.switchTo().window(windowHandle);
-                    System.out.println("✓ Switched to new window");
-                    Thread.sleep(1000);
-                    break;
+                    System.out.println("✓ Switched to new window: " + windowHandle);
+                    return;
                 }
             }
         } catch (Exception e) {
@@ -434,16 +470,20 @@ public class ServiceNodeSSOPage {
      */
     public void closeCurrentAndSwitchToMain() {
         try {
-            driver.close();
-            Thread.sleep(500);
-
-            // Switch to remaining window
-            for (String windowHandle : driver.getWindowHandles()) {
-                driver.switchTo().window(windowHandle);
-                break;
+            if (driver.getWindowHandles().size() > 1) {
+                driver.close();
+                Thread.sleep(500);
             }
-            Thread.sleep(1000);
-            System.out.println("✓ Closed window and switched back");
+            if (mainWindowHandle != null) {
+                driver.switchTo().window(mainWindowHandle);
+                System.out.println("✓ Closed window and switched back to main: " + mainWindowHandle);
+            } else {
+                // Fallback
+                for (String windowHandle : driver.getWindowHandles()) {
+                    driver.switchTo().window(windowHandle);
+                    break;
+                }
+            }
         } catch (Exception e) {
             System.err.println("Error closing window: " + e.getMessage());
         }
