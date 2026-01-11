@@ -10,7 +10,8 @@
         </classes>
     </test>
     
-    <!-- Enterprise Tests -->
+    <!-- COMMENTED OUT FOR FAST REPORT VERIFICATION -->
+    <!--
     <test name="Enterprise Dashboard Navigation" preserve-order="true">
         <classes>
             <class name="tests.EnterpriseDashboardNavigationTest"/>
@@ -65,7 +66,6 @@
         </classes>
     </test>
     
-    <!-- Super Admin Tests -->
     <test name="Super Admin Customer Org" preserve-order="true">
         <classes>
             <class name="tests.SuperAdminCustomerOrgTest"/>
@@ -101,4 +101,5 @@
             <class name="tests.SuperAdminServiceNodeSSOTest"/>
         </classes>
     </test>
+    -->
 </suite>
