@@ -36,43 +36,80 @@ public class ExtentReportManager {
 
             // Configure view order for better management visibility
             // Dashboard first, then tests, then exceptions
-            // Configure view order - TEST first ensures lists are visible even if Graphs
-            // (JS) are blocked
+            // Configure view order for better management visibility
+            // Dashboard first, then tests, then exceptions
             sparkReporter.viewConfigurer()
                     .viewOrder()
                     .as(new ViewName[] {
-                            ViewName.TEST,
                             ViewName.DASHBOARD,
+                            ViewName.TEST,
                             ViewName.CATEGORY,
                             ViewName.EXCEPTION
                     })
                     .apply();
 
-            // Custom CSS for prominent badges and cleaner look
+            // Custom CSS for enhanced dashboard charts and images
             String customCSS =
                     // Dashboard charts - make them larger and more visible
                     ".dashboard-view .card { min-height: 250px !important; margin-bottom: 20px; }" +
                             ".dashboard-view canvas { min-height: 220px !important; }" +
                             ".dashboard-view .card-header { font-size: 16px; font-weight: bold; }" +
 
-                            // Test list items
-                            ".test-list .test-item { padding: 12px !important; margin: 4px 0; border-radius: 6px; }" +
-
-                            // Screenshots - visible and clickable
-                            ".test-content img, .media img { max-width: 100%; height: auto; border: 1px solid #555; margin: 10px 0; }"
+                            // Test list items - better visibility and hover effects
+                            ".test-list .test-item { padding: 12px !important; margin: 4px 0; border-radius: 6px; transition: all 0.2s; }"
+                            +
+                            ".test-list .test-item:hover { background: rgba(255,255,255,0.1) !important; transform: translateX(5px); }"
                             +
 
-                            // Pass/Fail badges
-                            ".badge-success, .pass-bg { background-color: #28a745 !important; }" +
-                            ".badge-danger, .fail-bg { background-color: #dc3545 !important; }" +
-                            ".badge-warning, .skip-bg { background-color: #ffc107 !important; }" +
+                            // Screenshots - visible and clickable
+                            ".test-content img, .media img { max-width: 100%; height: auto; cursor: pointer; border: 2px solid #555; border-radius: 6px; margin: 10px 0; }"
+                            +
+                            ".test-content img:hover, .media img:hover { border-color: #00aaff; box-shadow: 0 0 15px rgba(0,170,255,0.6); }"
+                            +
+
+                            // Pass/Fail badges - more prominent
+                            ".badge-success, .pass-bg { background-color: #28a745 !important; font-size: 13px !important; padding: 5px 10px !important; }"
+                            +
+                            ".badge-danger, .fail-bg { background-color: #dc3545 !important; font-size: 13px !important; padding: 5px 10px !important; }"
+                            +
+                            ".badge-warning, .skip-bg { background-color: #ffc107 !important; font-size: 13px !important; padding: 5px 10px !important; }"
+                            +
+
+                            // Step logs - better readability
+                            ".test-steps .log { padding: 8px 15px !important; margin: 3px 0; border-radius: 4px; }" +
+
+                            // Navigation - better visibility
+                            ".side-nav .nav-link { padding: 12px 20px !important; font-size: 14px !important; }" +
+                            ".side-nav .nav-link:hover { background: rgba(255,255,255,0.15) !important; }" +
+                            ".side-nav .nav-link.active { background: #007bff !important; }" +
+
+                            // Cards and containers
+                            ".card { box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important; border: none !important; }" +
+                            ".card-body { padding: 20px !important; }" +
 
                             // System info table
-                            ".sysenv-container .table td { font-size: 14px; padding: 10px !important; }";
+                            ".sysenv-container .table td { font-size: 14px; padding: 10px !important; }" +
+                            ".sysenv-container .table { margin-bottom: 0; }" +
+
+                            // Report title - more prominent
+                            ".report-name { font-size: 24px !important; font-weight: bold !important; }";
 
             sparkReporter.config().setCss(customCSS);
 
-            // Removed custom JS to avoid Content Security Policy (CSP) blocking in Jenkins
+            // Custom JS for image lightbox and better interactivity
+            String customJS = "document.addEventListener('click', function(e) {" +
+                    "  if(e.target.tagName === 'IMG' && (e.target.closest('.test-content') || e.target.closest('.media'))) {"
+                    +
+                    "    window.open(e.target.src, '_blank');" +
+                    "  }" +
+                    "});" +
+                    // Expand all test details by default for better visibility
+                    "setTimeout(function() {" +
+                    "  document.querySelectorAll('.test-item.has-log').forEach(function(el) {" +
+                    "    el.classList.add('expanded');" +
+                    "  });" +
+                    "}, 500);";
+            sparkReporter.config().setJs(customJS);
 
             // Attach reporter to ExtentReports instance
             extent = new ExtentReports();
