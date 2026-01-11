@@ -16,7 +16,7 @@ public class ExtentReportManager {
     private static ThreadLocal<ExtentTest> test = new ThreadLocal<>();
     private static final String REPORT_PATH = "test-output/ExtentReport.html";
 
-    public static ExtentReports getExtentReports() {
+    public synchronized static ExtentReports getExtentReports() {
         if (extent == null) {
             // Ensure report directory exists
             new File("test-output").mkdirs();
@@ -184,7 +184,7 @@ public class ExtentReportManager {
     // These methods can be called from page objects to log test steps
     // They do NOT require any changes to existing test cases
 
-    private static int stepCounter = 0;
+    private static ThreadLocal<Integer> stepCounter = ThreadLocal.withInitial(() -> 0);
 
     /**
      * Logs a test step with automatic numbering.
@@ -195,8 +195,9 @@ public class ExtentReportManager {
     public static void logStep(String stepDescription) {
         ExtentTest currentTest = getTest();
         if (currentTest != null) {
-            stepCounter++;
-            currentTest.info("<b>Step " + stepCounter + ":</b> " + stepDescription);
+            int currentStep = stepCounter.get() + 1;
+            stepCounter.set(currentStep);
+            currentTest.info("<b>Step " + currentStep + ":</b> " + stepDescription);
         }
     }
 
@@ -240,6 +241,6 @@ public class ExtentReportManager {
      * Resets the step counter. Called automatically at the start of each test.
      */
     public static void resetStepCounter() {
-        stepCounter = 0;
+        stepCounter.set(0);
     }
 }

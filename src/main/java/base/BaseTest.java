@@ -14,7 +14,7 @@ import java.lang.reflect.Method;
 
 public class BaseTest {
 
-    protected static WebDriver driver;
+    protected WebDriver driver;
     protected ExtentReports extent;
     protected ExtentTest test;
     protected boolean retainSession = false; // Flag to skip auto-navigation to login
