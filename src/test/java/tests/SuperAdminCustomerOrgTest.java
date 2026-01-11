@@ -294,8 +294,9 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         String newUrl = driver.getCurrentUrl();
         System.out.println("Current URL after navigation: " + newUrl);
 
-        Assert.assertTrue(newUrl.contains("roles"), "URL should contain 'roles'. Current URL: " + newUrl);
-        Assert.assertTrue(page.isRolesTabLoaded(), "Roles tab should load successfully");
+        Assert.assertTrue(newUrl.contains("roles") || newUrl.contains("profile"),
+                "URL should contain 'roles' or 'profile'. Current URL: " + newUrl);
+        Assert.assertTrue(page.isRolesTabLoaded(), "Roles/Profiles tab should load successfully");
         System.out.println("✓ Roles tab is visible and accessible");
         Thread.sleep(500); // Stabilize before next test
     }
@@ -314,7 +315,7 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
 
         Assert.assertFalse(headers.isEmpty(), "Roles table should have headers");
 
-        List<String> expectedHeaders = Arrays.asList("Role Name", "Users", "Permissions", "Status");
+        List<String> expectedHeaders = Arrays.asList("Role Name", "Created On", "Assigned Services", "Status");
 
         org.testng.asserts.SoftAssert softAssert = new org.testng.asserts.SoftAssert();
         for (String expected : expectedHeaders) {

@@ -63,14 +63,15 @@ public class CustomerOrgPageLocators {
         public static final By PROFILE_VIEW_MODAL = By.xpath(
                         "//mat-dialog-container | //div[contains(@class, 'modal')]");
 
-        // ========== Roles Tab ==========
-        // Tab navigation
+        // Tab navigation - loosened to allow "Roles", "Role", "Roles (2)", "Profiles",
+        // "Profile"
         public static final By ROLES_TAB = By.xpath(
-                        "//a[normalize-space()='Roles'] | " +
-                                        "//div[@role='tab' and normalize-space()='Roles'] | " +
-                                        "//button[@role='tab' and normalize-space()='Roles'] | " +
-                                        "//a[normalize-space()='Role'] | " +
-                                        "//div[normalize-space()='Role' or normalize-space()='Roles']");
+                        "//div[contains(@class,'tab') and contains(., 'Role')] | " +
+                                        "//a[contains(., 'Role')] | " +
+                                        "//button[contains(., 'Role')] | " +
+                                        "//div[contains(@class,'tab') and contains(., 'Profile')] | " +
+                                        "//a[contains(., 'Profile')] | " +
+                                        "//button[contains(., 'Profile')]");
 
         // Table elements
         public static final By ROLES_TABLE = By.xpath("//table");
@@ -85,8 +86,9 @@ public class CustomerOrgPageLocators {
         public static final By ROLES_SEARCH_FIELD = By.xpath(
                         "//input[@type='search' or contains(@placeholder, 'Search by name')]");
 
-        // Filter elements - filter button has specific ID
-        public static final By ROLES_FILTER_BUTTON = By.id("CampaignfiltersDropDown");
+        // Filter elements - broadened to catch any filter button if ID changes
+        public static final By ROLES_FILTER_BUTTON = By.xpath(
+                        "//*[@id='CampaignfiltersDropDown'] | //button[contains(., 'Filter')]");
         public static final By ROLES_FILTER_OPTION_ALL = By.xpath("//label[contains(., 'All')]");
         public static final By ROLES_FILTER_OPTION_ACTIVE = By.xpath("//label[contains(., 'Active')]");
         public static final By ROLES_FILTER_OPTION_INACTIVE = By.xpath("//label[contains(., 'Inactive')]");

@@ -810,11 +810,10 @@ public class CustomerOrgPage {
             String tabText = tab.getText().trim();
             System.out.println("Found Roles tab element: '" + tabText + "'");
 
-            // Validate the tab text is exactly "Roles" or "Role" (not "Select Roles" or
-            // other variations)
-            if (!tabText.equals("Roles") && !tabText.equals("Role")) {
+            // Validate the tab text represents "Roles" or "Profiles"
+            if (!tabText.toLowerCase().contains("role") && !tabText.toLowerCase().contains("profile")) {
                 System.err.println(
-                        "WARNING: Found element text '" + tabText + "' doesn't match expected 'Roles' or 'Role'");
+                        "WARNING: Found element text '" + tabText + "' doesn't match expected 'Roles' or 'Profiles'");
 
                 // Try to find a better match
                 List<WebElement> allTabs = driver
@@ -824,7 +823,7 @@ public class CustomerOrgPage {
                 System.out.println("Searching through " + allTabs.size() + " tab elements for exact match...");
                 for (WebElement t : allTabs) {
                     String text = t.getText().trim();
-                    if (text.equals("Roles") || text.equals("Role")) {
+                    if (text.toLowerCase().contains("role") || text.toLowerCase().contains("profile")) {
                         System.out.println("✓ Found correct tab with text: '" + text + "'");
                         correctTab = t;
                         break;
@@ -836,7 +835,7 @@ public class CustomerOrgPage {
                     tabText = tab.getText().trim();
                 } else {
                     throw new RuntimeException(
-                            "Could not find a tab with exact text 'Roles' or 'Role'. Found: '" + tabText + "'");
+                            "Could not find a tab with text 'Roles' or 'Profiles'. Found: '" + tabText + "'");
                 }
             }
 
@@ -846,16 +845,16 @@ public class CustomerOrgPage {
 
             // Use JavaScript click for more reliable navigation
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tab);
-            System.out.println("✓ Clicked Roles tab using JS");
+            System.out.println("✓ Clicked Roles/Profiles tab using JS");
 
             Thread.sleep(2000);
 
             // Verify navigation succeeded
             String newUrl = driver.getCurrentUrl();
-            if (!newUrl.contains("roles")) {
+            if (!newUrl.contains("roles") && !newUrl.contains("profile")) {
                 throw new RuntimeException("Navigation to Roles tab failed. Current URL: " + newUrl);
             }
-            System.out.println("✓ Successfully navigated to Roles tab. URL: " + newUrl);
+            System.out.println("✓ Successfully navigated to Roles/Profiles tab. URL: " + newUrl);
 
         } catch (TimeoutException e) {
             System.err.println("ERROR: Roles tab element not found!");

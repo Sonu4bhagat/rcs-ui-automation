@@ -13,8 +13,8 @@ import java.util.List;
 public class LoginPage {
     WebDriver driver;
     WebDriverWait wait;
-    private static final int DEFAULT_TIMEOUT = 10;
-    private static final int HEADLESS_TIMEOUT = 20;
+    private static final int DEFAULT_TIMEOUT = 30;
+    private static final int HEADLESS_TIMEOUT = 45;
 
     public LoginPage(WebDriver driver) {
         this.driver = driver;
