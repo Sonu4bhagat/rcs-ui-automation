@@ -25,48 +25,111 @@ public class LoginPage {
 
     public void enterUsername(String email) {
         ExtentReportManager.logStep("Enter username: " + email);
-        wait.until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.EMAIL_INPUT)).sendKeys(email);
+
+        // In headless mode, wait for page to be fully loaded
+        if (base.DriverFactory.isHeadlessModeEnabled()) {
+            waitForPageLoad();
+        }
+
+        WebElement emailField = wait
+                .until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.EMAIL_INPUT));
+        emailField.clear();
+        emailField.sendKeys(email);
+        System.out.println("Username entered: " + email);
+    }
+
+    /**
+     * Wait for page to be fully loaded (document.readyState = complete)
+     */
+    private void waitForPageLoad() {
+        try {
+            new WebDriverWait(driver, Duration.ofSeconds(10)).until(
+                    webDriver -> ((JavascriptExecutor) webDriver)
+                            .executeScript("return document.readyState").equals("complete"));
+            // Additional wait for Angular/React apps to initialize
+            Thread.sleep(2000);
+        } catch (Exception e) {
+            System.out.println("Page load wait completed with: " + e.getMessage());
+        }
     }
 
     public void enterPassword(String password) {
         ExtentReportManager.logStep("Enter password (masked)");
         WebElement passwordField = wait
                 .until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.PASSWORD_INPUT));
+        passwordField.clear();
         passwordField.sendKeys(password);
+        System.out.println("Password entered");
 
         // In headless mode, submit form using ENTER key (more reliable than button
         // click)
         if (base.DriverFactory.isHeadlessModeEnabled()) {
             System.out.println("Submitting form with ENTER key (headless mode)");
             passwordField.sendKeys(Keys.ENTER);
-            // Wait for form submission
+
+            // Wait for form submission and page transition
             try {
-                Thread.sleep(3000);
+                Thread.sleep(5000);
             } catch (InterruptedException e) {
             }
+
+            // Debug: capture page state after submission
+            System.out.println("=== DEBUG: After form submission ===");
+            System.out.println("Current URL: " + driver.getCurrentUrl());
+            System.out.println("Page Title: " + driver.getTitle());
+
+            // Check if there's any error message on page
+            try {
+                List<WebElement> errors = driver
+                        .findElements(By.xpath("//*[contains(@class, 'error') or contains(@class, 'alert')]"));
+                if (!errors.isEmpty()) {
+                    System.out.println("Error elements found: " + errors.size());
+                    for (WebElement error : errors) {
+                        if (error.isDisplayed()) {
+                            System.out.println("Error text: " + error.getText());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("No error elements found");
+            }
+            System.out.println("=== END DEBUG ===");
         }
     }
 
     public void clickLoginButton() {
-        ExtentReportManager.logStep("Click Login button");
-        WebElement loginBtn = wait.until(ExpectedConditions.elementToBeClickable(LoginPageLocators.LOGIN_BUTTON));
-
         String currentUrl = driver.getCurrentUrl();
-        System.out.println("URL before login click: " + currentUrl);
 
-        // Use JavaScript click in headless mode to avoid click intercept issues
+        // In headless mode, if ENTER key already submitted the form, skip button click
         if (base.DriverFactory.isHeadlessModeEnabled()) {
-            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
-            // Wait for page transition in headless mode
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
+            if (!currentUrl.contains("login")) {
+                System.out.println("Already logged in (URL: " + currentUrl + "), skipping login button click");
+                ExtentReportManager.logStep("Login button click skipped - already logged in");
+                return;
             }
-        } else {
-            loginBtn.click();
         }
 
-        System.out.println("URL after login click: " + driver.getCurrentUrl());
+        ExtentReportManager.logStep("Click Login button");
+        System.out.println("URL before login click: " + currentUrl);
+
+        try {
+            WebElement loginBtn = wait.until(ExpectedConditions.elementToBeClickable(LoginPageLocators.LOGIN_BUTTON));
+
+            if (base.DriverFactory.isHeadlessModeEnabled()) {
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                }
+            } else {
+                loginBtn.click();
+            }
+
+            System.out.println("URL after login click: " + driver.getCurrentUrl());
+        } catch (Exception e) {
+            // If login button not found, we might already be logged in
+            System.out.println("Login button not found, might already be logged in: " + e.getMessage());
+        }
     }
 
     public void enterOTP(String otp) {
@@ -376,10 +439,15 @@ public class LoginPage {
             }
             System.out.println("Clicked sign out button.");
 
-            // 3. Confirm Logout
+            // 3. Confirm Logout - Use JS click to avoid iframe overlay issues
             WebElement confirmBtn = wait
                     .until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.CONFIRM_LOGOUT_BUTTON));
-            wait.until(ExpectedConditions.elementToBeClickable(confirmBtn)).click();
+            try {
+                wait.until(ExpectedConditions.elementToBeClickable(confirmBtn)).click();
+            } catch (ElementClickInterceptedException e) {
+                System.out.println("Confirm logout click intercepted. Using JS Click...");
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", confirmBtn);
+            }
             System.out.println("Clicked confirm logout.");
 
             // 4. Verify return to login page

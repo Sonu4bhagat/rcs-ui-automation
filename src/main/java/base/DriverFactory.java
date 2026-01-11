@@ -23,6 +23,10 @@ public class DriverFactory {
 
         ChromeOptions options = new ChromeOptions();
 
+        // Common options for both modes
+        options.addArguments("--disable-blink-features=AutomationControlled");
+        options.setExperimentalOption("excludeSwitches", new String[] { "enable-automation" });
+
         // Check if headless mode is enabled
         if (isHeadlessMode()) {
             options.addArguments("--headless=new");
@@ -30,6 +34,15 @@ public class DriverFactory {
             options.addArguments("--window-size=1920,1080");
             options.addArguments("--no-sandbox");
             options.addArguments("--disable-dev-shm-usage");
+            // Additional options for headless form interaction
+            options.addArguments("--disable-extensions");
+            options.addArguments("--disable-popup-blocking");
+            options.addArguments("--disable-notifications");
+            options.addArguments("--ignore-certificate-errors");
+            options.addArguments("--remote-allow-origins=*");
+            // User agent to avoid bot detection
+            options.addArguments(
+                    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
             System.out.println("[DriverFactory] Running in HEADLESS mode (CI/CD)");
         } else {
             System.out.println("[DriverFactory] Running in GUI mode");
