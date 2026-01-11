@@ -2,11 +2,11 @@ package pages;
 
 import locators.ServicesPageLocators;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import utils.HeadlessHelper;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
@@ -18,18 +18,14 @@ public class ServicesPage {
 
     public ServicesPage(WebDriver driver) {
         this.driver = driver;
-        // Use longer timeout in headless mode
-        int timeout = base.DriverFactory.isHeadlessModeEnabled() ? 20 : 15;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
     }
 
     public void clickServicesTab() {
         System.out.println("Clicking on Services Tab...");
         System.out.println("Current URL before: " + driver.getCurrentUrl());
-        HeadlessHelper.waitForPageLoad(driver);
 
-        WebElement servicesTab = wait.until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.SERVICES_TAB));
-        HeadlessHelper.safeClick(driver, servicesTab);
+        wait.until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.SERVICES_TAB)).click();
         System.out.println("Clicked on Services Tab.");
 
         // Wait for URL to contain 'services' or for Services page header to appear
@@ -69,6 +65,11 @@ public class ServicesPage {
         System.out.println("Looking for View Details button for service: " + serviceName);
         System.out.println("Current URL: " + driver.getCurrentUrl());
 
+        // Remove any blocking iframes (chat widgets, etc.) in headless mode
+        if (base.DriverFactory.isHeadlessModeEnabled()) {
+            removeBlockingIframes();
+        }
+
         // Wait for page to fully load
         try {
             Thread.sleep(2000);
@@ -93,13 +94,24 @@ public class ServicesPage {
 
             WebElement button = wait.until(ExpectedConditions.elementToBeClickable(locator));
             System.out.println("Found button: " + button.getText());
-            button.click();
+
+            // Use JavaScript click in headless mode to avoid overlay issues
+            if (base.DriverFactory.isHeadlessModeEnabled()) {
+                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", button);
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                }
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", button);
+            } else {
+                button.click();
+            }
             System.out.println("Clicked View Details for service: " + serviceName);
         } catch (Exception e) {
             System.out.println("ERROR: Could not find/click View Details for " + serviceName);
             System.out.println("Error details: " + e.getMessage());
 
-            // Try alternative approach: click any card button
+            // Try alternative approach: click any card button with JS
             try {
                 System.out.println("Trying alternative: finding any card with service name...");
                 List<WebElement> allCards = driver.findElements(By.xpath("//div[contains(@class, 'card')]"));
@@ -113,15 +125,15 @@ public class ServicesPage {
                         List<WebElement> buttons = card.findElements(By.tagName("button"));
                         for (WebElement btn : buttons) {
                             if (btn.getText().toLowerCase().contains("view")) {
-                                System.out.println("Clicking button: " + btn.getText());
-                                btn.click();
+                                System.out.println("Clicking button with JS: " + btn.getText());
+                                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
                                 return;
                             }
                         }
                         // If no View button, click the first button
                         if (!buttons.isEmpty()) {
-                            System.out.println("Clicking first button in card: " + buttons.get(0).getText());
-                            buttons.get(0).click();
+                            System.out.println("Clicking first button in card with JS: " + buttons.get(0).getText());
+                            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", buttons.get(0));
                             return;
                         }
                     }
@@ -131,6 +143,24 @@ public class ServicesPage {
                 System.out.println("Alternative approach also failed: " + ex.getMessage());
                 throw new RuntimeException("Failed to click View Details for " + serviceName + ": " + ex.getMessage());
             }
+        }
+    }
+
+    /**
+     * Remove blocking iframes (like chat widgets) that overlay clickable elements
+     */
+    private void removeBlockingIframes() {
+        try {
+            ((JavascriptExecutor) driver).executeScript(
+                    "var iframes = document.querySelectorAll('iframe[id*=\"btj\"], iframe[id*=\"chat\"], iframe[style*=\"z-index\"]');"
+                            +
+                            "iframes.forEach(function(iframe) {" +
+                            "  console.log('Removing blocking iframe:', iframe.id);" +
+                            "  iframe.remove();" +
+                            "});");
+            System.out.println("Removed blocking iframes");
+        } catch (Exception e) {
+            System.out.println("Could not remove iframes: " + e.getMessage());
         }
     }
 

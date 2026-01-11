@@ -5,7 +5,6 @@ import locators.DashboardPageLocators;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import utils.HeadlessHelper;
 
 import java.time.Duration;
 import java.util.List;
@@ -25,28 +24,20 @@ public class CustomerOrgPage {
 
     public void navigateToCustomerOrg() {
         System.out.println("Navigating to Customer Org...");
-        HeadlessHelper.waitForPageLoad(driver);
         WebElement link = wait.until(ExpectedConditions.elementToBeClickable(DashboardPageLocators.SUPER_ADMIN_ITEM));
-        HeadlessHelper.safeClick(driver, link);
+        link.click();
         wait.until(ExpectedConditions.visibilityOfElementLocated(CustomerOrgPageLocators.PAGE_HEADER));
-        HeadlessHelper.waitAfterNavigation();
     }
 
     public void filterByEnterprise() {
         System.out.println("Applying Enterprise filter...");
-        WebElement filterDropdown = wait
-                .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.FILTER_DROPDOWN));
-        HeadlessHelper.safeClick(driver, filterDropdown);
+        wait.until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.FILTER_DROPDOWN)).click();
 
         // Select Enterprise radio option (better to click label)
-        WebElement enterpriseOption = wait
-                .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.ENTERPRISE_FILTER_OPTION));
-        HeadlessHelper.safeClick(driver, enterpriseOption);
+        wait.until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.ENTERPRISE_FILTER_OPTION)).click();
 
         // Click Apply button
-        WebElement applyBtn = wait
-                .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.APPLY_FILTER_BUTTON));
-        HeadlessHelper.safeClick(driver, applyBtn);
+        wait.until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.APPLY_FILTER_BUTTON)).click();
 
         // Wait for table to refresh
         try {
@@ -98,10 +89,7 @@ public class CustomerOrgPage {
 
     public void navigateToTab(By tabLocator) {
         System.out.println("Switching to tab: " + tabLocator.toString());
-        WebElement tab = wait.until(ExpectedConditions.elementToBeClickable(tabLocator));
-        HeadlessHelper.scrollIntoView(driver, tab);
-        HeadlessHelper.safeClick(driver, tab);
-        HeadlessHelper.waitAfterNavigation();
+        wait.until(ExpectedConditions.elementToBeClickable(tabLocator)).click();
     }
 
     public void drillDownToEnterprise() {

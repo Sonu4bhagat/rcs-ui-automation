@@ -187,6 +187,12 @@ public class DashboardPage {
     }
 
     public void clickService(String serviceName) {
+        // Wait for page to be ready in headless mode
+        if (base.DriverFactory.isHeadlessModeEnabled()) {
+            waitForPageReady();
+            removeBlockingIframes();
+        }
+
         By locator;
         switch (serviceName.toUpperCase()) {
             case "SMS":
@@ -215,7 +221,50 @@ public class DashboardPage {
         }
 
         System.out.println("Navigating to service: " + serviceName);
-        wait.until(ExpectedConditions.elementToBeClickable(locator)).click();
+        WebElement serviceElement = wait.until(ExpectedConditions.elementToBeClickable(locator));
+
+        // Use JavaScript click in headless mode to avoid overlay issues
+        if (base.DriverFactory.isHeadlessModeEnabled()) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", serviceElement);
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+            }
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", serviceElement);
+        } else {
+            serviceElement.click();
+        }
+    }
+
+    /**
+     * Remove blocking iframes (like chat widgets) that overlay clickable elements
+     */
+    private void removeBlockingIframes() {
+        try {
+            ((JavascriptExecutor) driver).executeScript(
+                    "var iframes = document.querySelectorAll('iframe[id*=\"btj\"], iframe[id*=\"chat\"], iframe[style*=\"z-index\"]');"
+                            +
+                            "iframes.forEach(function(iframe) {" +
+                            "  console.log('Removing blocking iframe:', iframe.id);" +
+                            "  iframe.remove();" +
+                            "});");
+            System.out.println("Removed blocking iframes");
+        } catch (Exception e) {
+            System.out.println("Could not remove iframes: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Wait for page to be fully loaded (for headless mode stability)
+     */
+    private void waitForPageReady() {
+        try {
+            new org.openqa.selenium.support.ui.WebDriverWait(driver, java.time.Duration.ofSeconds(10)).until(
+                    d -> ((JavascriptExecutor) d).executeScript("return document.readyState").equals("complete"));
+            Thread.sleep(1500); // Extra wait for Angular/React app initialization
+        } catch (Exception e) {
+            System.out.println("Page ready wait completed: " + e.getMessage());
+        }
     }
 
     public void openCalendarFilter() {

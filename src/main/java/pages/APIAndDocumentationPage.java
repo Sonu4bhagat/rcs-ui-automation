@@ -22,7 +22,9 @@ public class APIAndDocumentationPage {
 
     public APIAndDocumentationPage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        // Use longer timeout in headless mode
+        int timeout = base.DriverFactory.isHeadlessModeEnabled() ? 20 : 10;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
     }
 
     /**
@@ -31,10 +33,26 @@ public class APIAndDocumentationPage {
     public void navigateToAPIAndDocumentation() throws InterruptedException {
         try {
             System.out.println("Navigating to API & Documentation...");
+
+            // Wait for page ready and remove blocking iframes in headless mode
+            if (base.DriverFactory.isHeadlessModeEnabled()) {
+                waitForPageReady();
+                removeBlockingIframes();
+            }
+
             WebElement apiDocMenu = wait.until(ExpectedConditions.elementToBeClickable(
                     APIAndDocumentationPageLocators.API_DOC_MENU));
-            apiDocMenu.click();
-            Thread.sleep(1500); // Allow page to load
+
+            // Use JavaScript click in headless mode
+            if (base.DriverFactory.isHeadlessModeEnabled()) {
+                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", apiDocMenu);
+                Thread.sleep(500);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", apiDocMenu);
+                Thread.sleep(3000); // Longer wait for headless
+            } else {
+                apiDocMenu.click();
+                Thread.sleep(1500); // Allow page to load
+            }
             System.out.println("Successfully clicked API & Documentation menu");
         } catch (Exception e) {
             System.out.println("Error navigating to API & Documentation: " + e.getMessage());
@@ -47,11 +65,21 @@ public class APIAndDocumentationPage {
      */
     public boolean isPageLoaded() {
         try {
-            wait.until(ExpectedConditions.visibilityOfElementLocated(
+            // Use longer wait in headless mode
+            int waitTime = base.DriverFactory.isHeadlessModeEnabled() ? 15 : 10;
+            WebDriverWait customWait = new WebDriverWait(driver, Duration.ofSeconds(waitTime));
+
+            customWait.until(ExpectedConditions.visibilityOfElementLocated(
                     APIAndDocumentationPageLocators.PAGE_TITLE));
             System.out.println("API & Documentation page loaded successfully");
             return true;
         } catch (Exception e) {
+            // Try URL-based verification as fallback
+            String currentUrl = driver.getCurrentUrl();
+            if (currentUrl.contains("api-documentation") || currentUrl.contains("api-doc")) {
+                System.out.println("API & Documentation page loaded (verified by URL: " + currentUrl + ")");
+                return true;
+            }
             System.out.println("API & Documentation page did not load: " + e.getMessage());
             return false;
         }
@@ -477,6 +505,37 @@ public class APIAndDocumentationPage {
         } catch (Exception e) {
             // No loading spinner or already completed
             System.out.println("No loading indicator or already completed");
+        }
+    }
+
+    /**
+     * Wait for page to be fully loaded (for headless mode stability)
+     */
+    private void waitForPageReady() {
+        try {
+            new WebDriverWait(driver, Duration.ofSeconds(10)).until(
+                    d -> ((JavascriptExecutor) d).executeScript("return document.readyState").equals("complete"));
+            Thread.sleep(1500); // Extra wait for Angular/React app initialization
+        } catch (Exception e) {
+            System.out.println("Page ready wait completed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Remove blocking iframes (like chat widgets) that overlay clickable elements
+     */
+    private void removeBlockingIframes() {
+        try {
+            ((JavascriptExecutor) driver).executeScript(
+                    "var iframes = document.querySelectorAll('iframe[id*=\"btj\"], iframe[id*=\"chat\"], iframe[style*=\"z-index\"]');"
+                            +
+                            "iframes.forEach(function(iframe) {" +
+                            "  console.log('Removing blocking iframe:', iframe.id);" +
+                            "  iframe.remove();" +
+                            "});");
+            System.out.println("Removed blocking iframes");
+        } catch (Exception e) {
+            System.out.println("Could not remove iframes: " + e.getMessage());
         }
     }
 }

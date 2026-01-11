@@ -25,110 +25,29 @@ public class LoginPage {
 
     public void enterUsername(String email) {
         ExtentReportManager.logStep("Enter username: " + email);
-
-        // In headless mode, wait for page to be fully loaded
-        if (base.DriverFactory.isHeadlessModeEnabled()) {
-            waitForPageLoad();
-        }
-
-        WebElement emailField = wait
-                .until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.EMAIL_INPUT));
-        emailField.clear();
-        emailField.sendKeys(email);
-        System.out.println("Username entered: " + email);
-    }
-
-    /**
-     * Wait for page to be fully loaded (document.readyState = complete)
-     */
-    private void waitForPageLoad() {
-        try {
-            new WebDriverWait(driver, Duration.ofSeconds(10)).until(
-                    webDriver -> ((JavascriptExecutor) webDriver)
-                            .executeScript("return document.readyState").equals("complete"));
-            // Additional wait for Angular/React apps to initialize
-            Thread.sleep(2000);
-        } catch (Exception e) {
-            System.out.println("Page load wait completed with: " + e.getMessage());
-        }
+        wait.until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.EMAIL_INPUT)).sendKeys(email);
     }
 
     public void enterPassword(String password) {
         ExtentReportManager.logStep("Enter password (masked)");
-        WebElement passwordField = wait
-                .until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.PASSWORD_INPUT));
-        passwordField.clear();
-        passwordField.sendKeys(password);
-        System.out.println("Password entered");
-
-        // In headless mode, submit form using ENTER key (more reliable than button
-        // click)
-        if (base.DriverFactory.isHeadlessModeEnabled()) {
-            System.out.println("Submitting form with ENTER key (headless mode)");
-            passwordField.sendKeys(Keys.ENTER);
-
-            // Wait for form submission and page transition
-            try {
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-            }
-
-            // Debug: capture page state after submission
-            System.out.println("=== DEBUG: After form submission ===");
-            System.out.println("Current URL: " + driver.getCurrentUrl());
-            System.out.println("Page Title: " + driver.getTitle());
-
-            // Check if there's any error message on page
-            try {
-                List<WebElement> errors = driver
-                        .findElements(By.xpath("//*[contains(@class, 'error') or contains(@class, 'alert')]"));
-                if (!errors.isEmpty()) {
-                    System.out.println("Error elements found: " + errors.size());
-                    for (WebElement error : errors) {
-                        if (error.isDisplayed()) {
-                            System.out.println("Error text: " + error.getText());
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                System.out.println("No error elements found");
-            }
-            System.out.println("=== END DEBUG ===");
-        }
+        wait.until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.PASSWORD_INPUT)).sendKeys(password);
     }
 
     public void clickLoginButton() {
-        String currentUrl = driver.getCurrentUrl();
-
-        // In headless mode, if ENTER key already submitted the form, skip button click
-        if (base.DriverFactory.isHeadlessModeEnabled()) {
-            if (!currentUrl.contains("login")) {
-                System.out.println("Already logged in (URL: " + currentUrl + "), skipping login button click");
-                ExtentReportManager.logStep("Login button click skipped - already logged in");
-                return;
-            }
-        }
-
         ExtentReportManager.logStep("Click Login button");
-        System.out.println("URL before login click: " + currentUrl);
+        WebElement loginBtn = wait.until(ExpectedConditions.elementToBeClickable(LoginPageLocators.LOGIN_BUTTON));
 
-        try {
-            WebElement loginBtn = wait.until(ExpectedConditions.elementToBeClickable(LoginPageLocators.LOGIN_BUTTON));
-
-            if (base.DriverFactory.isHeadlessModeEnabled()) {
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException e) {
-                }
-            } else {
-                loginBtn.click();
+        // Use JavaScript click in headless mode to avoid click intercept issues
+        if (base.DriverFactory.isHeadlessModeEnabled()) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
+            // Wait for form submission in headless mode only
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
             }
-
-            System.out.println("URL after login click: " + driver.getCurrentUrl());
-        } catch (Exception e) {
-            // If login button not found, we might already be logged in
-            System.out.println("Login button not found, might already be logged in: " + e.getMessage());
+        } else {
+            // GUI mode: normal click, no extra wait
+            loginBtn.click();
         }
     }
 
@@ -180,58 +99,56 @@ public class LoginPage {
 
     public boolean isDashboardLoaded(UserRole role) {
         try {
-            // In headless mode, use URL-based verification (more reliable)
-            // Wait for URL to change from login page
-            try {
-                wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("login")));
-            } catch (TimeoutException e) {
-                System.out.println("Still on login page after waiting");
-                return false;
-            }
-
-            String currentUrl = driver.getCurrentUrl();
-            System.out.println("Current URL after login: " + currentUrl);
-
-            // URL-based verification (works in headless mode)
-            boolean urlValid = false;
+            boolean isLoaded = false;
             switch (role) {
                 case SUPERADMIN:
-                    // SuperAdmin should land on customer-org or dashboard
-                    urlValid = currentUrl.contains("customer-org") || currentUrl.contains("dashboard") ||
-                            currentUrl.contains("superadmin") || !currentUrl.contains("login");
+                    isLoaded = wait
+                            .until(ExpectedConditions
+                                    .visibilityOfElementLocated(LoginPageLocators.SUPER_ADMIN_DASHBOARD))
+                            .isDisplayed();
                     break;
                 case ENTERPRISE:
-                    // Enterprise should land on select-wallet or dashboard
-                    urlValid = currentUrl.contains("select-wallet") || currentUrl.contains("dashboard") ||
-                            currentUrl.contains("enterprise") || !currentUrl.contains("login");
+                    isLoaded = wait
+                            .until(ExpectedConditions
+                                    .visibilityOfElementLocated(LoginPageLocators.ENTERPRISE_DASHBOARD))
+                            .isDisplayed();
                     break;
                 case RESELLER:
-                    // Reseller should land on dashboard
-                    urlValid = currentUrl.contains("dashboard") || currentUrl.contains("reseller") ||
-                            !currentUrl.contains("login");
+                    isLoaded = wait
+                            .until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.RESELLER_DASHBOARD))
+                            .isDisplayed();
                     break;
                 default:
                     return false;
             }
+            System.out.println("Dashboard loaded for role " + role + ": " + isLoaded);
 
-            if (!urlValid) {
-                System.out.println("URL validation failed for role " + role + ". URL: " + currentUrl);
-                return false;
+            // Additional URL Validation
+            String currentUrl = driver.getCurrentUrl();
+            if (isLoaded && !currentUrl.contains("dashboard") && !currentUrl.contains("customer")) {
+                System.out.println("Warning: URL does not contain 'dashboard' or 'customer': " + currentUrl);
             }
 
-            System.out.println("Dashboard URL verified for role " + role + ": " + currentUrl);
-
-            // Give page a moment to stabilize in headless mode
+            return isLoaded;
+        } catch (TimeoutException e) {
+            // HEADLESS FALLBACK: Use URL-based verification if element check fails
             if (base.DriverFactory.isHeadlessModeEnabled()) {
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
+                String currentUrl = driver.getCurrentUrl();
+                System.out.println("Element-based check failed in headless. Checking URL: " + currentUrl);
+
+                boolean urlValid = !currentUrl.contains("login") && (currentUrl.contains("dashboard") ||
+                        currentUrl.contains("customer") ||
+                        currentUrl.contains("select-wallet") ||
+                        currentUrl.contains("/sa/") ||
+                        currentUrl.contains("/ep/") ||
+                        currentUrl.contains("/rs/"));
+
+                if (urlValid) {
+                    System.out.println("URL-based verification passed for role " + role);
+                    return true;
                 }
             }
-
-            return true;
-        } catch (Exception e) {
-            System.out.println("Exception checking dashboard for role " + role + ": " + e.getMessage());
+            System.out.println("Timeout waiting for dashboard for role: " + role);
             return false;
         }
     }
@@ -439,7 +356,7 @@ public class LoginPage {
             }
             System.out.println("Clicked sign out button.");
 
-            // 3. Confirm Logout - Use JS click to avoid iframe overlay issues
+            // 3. Confirm Logout - Use JS click fallback in headless mode
             WebElement confirmBtn = wait
                     .until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.CONFIRM_LOGOUT_BUTTON));
             try {
