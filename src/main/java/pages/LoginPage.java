@@ -30,7 +30,21 @@ public class LoginPage {
 
     public void enterPassword(String password) {
         ExtentReportManager.logStep("Enter password (masked)");
-        wait.until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.PASSWORD_INPUT)).sendKeys(password);
+        WebElement passwordField = wait
+                .until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.PASSWORD_INPUT));
+        passwordField.sendKeys(password);
+
+        // In headless mode, submit form using ENTER key (more reliable than button
+        // click)
+        if (base.DriverFactory.isHeadlessModeEnabled()) {
+            System.out.println("Submitting form with ENTER key (headless mode)");
+            passwordField.sendKeys(Keys.ENTER);
+            // Wait for form submission
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+            }
+        }
     }
 
     public void clickLoginButton() {
