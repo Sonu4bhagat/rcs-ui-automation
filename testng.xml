@@ -5,9 +5,9 @@
         <listener class-name="listeners.ExtentTestNGListener"/>
     </listeners>
     
-    <test name="Customer Organization Tests" preserve-order="true">
+    <test name="Login Tests" preserve-order="true">
         <classes>
-            <class name="tests.SuperAdminCustomerOrgTest"/>
+            <class name="tests.LoginTest"/>
         </classes>
     </test>
 </suite>
