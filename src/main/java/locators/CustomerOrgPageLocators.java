@@ -95,7 +95,8 @@ public class CustomerOrgPageLocators {
         public static final By ROLES_FILTER_APPLY_BUTTON = By.xpath("//button[contains(text(), 'Apply')]");
 
         // Add New button
-        public static final By ROLES_ADD_NEW_BUTTON = By.xpath("//button[contains(text(), 'Add New')]");
+        public static final By ROLES_ADD_NEW_BUTTON = By.xpath(
+                        "//button[contains(text(), 'Add New') or contains(text(), 'Create Role') or contains(text(), 'Add Role')]");
 
         // No data message
         public static final By ROLES_NO_DATA_MESSAGE = By.xpath(

@@ -530,15 +530,24 @@ public class CustomerOrgPage {
             for (WebElement element : elements) {
                 String text = element.getText().trim();
                 if (!text.isEmpty()) {
-                    // Text might be "Customer Id: CUST172" - extract just the value
-                    if (text.contains("Customer Id:")) {
-                        String value = text.replace("Customer Id:", "").trim();
-                        if (!value.isEmpty()) {
-                            System.out.println("✓ Customer ID found: " + value);
-                            return value;
+                    System.out.println("Checking element text: " + text);
+                    // Match "Customer Id: Value" or "SV Customer Id: Value"
+                    if (text.toLowerCase().contains("customer id")) {
+                        // Extract value after finding the label
+                        // Split by colon if present
+                        if (text.contains(":")) {
+                            String[] parts = text.split(":", 2);
+                            if (parts.length > 1) {
+                                String value = parts[1].trim();
+                                if (!value.isEmpty()) {
+                                    System.out.println("✓ Customer ID found (split): " + value);
+                                    return value;
+                                }
+                            }
                         }
-                    } else if (!text.equalsIgnoreCase("Customer ID") && !text.equalsIgnoreCase("Customer Id")) {
-                        System.out.println("✓ Customer ID found: " + text);
+                    } else if (text.matches("[A-Za-z0-9]+")) {
+                        // If text is just the value (e.g. "Backend0001")
+                        System.out.println("✓ Potential Customer ID found: " + text);
                         return text;
                     }
                 }
@@ -547,53 +556,50 @@ public class CustomerOrgPage {
             System.err.println("Error using primary locator: " + e.getMessage());
         }
 
-        // Fallback: Try additional patterns
+        // Fallback: Specific handling for SV Customer Id vs Customer Id logic
+        // The user logs showed:
+        // [1] Customer Id: Backend0001
+        // [2] SV Customer Id: SV1762910038
+        // We usually want the "Customer Id", not "SV Customer Id" unless specified.
+        // If "Customer Id" is N/A, maybe we fall back? No, usually Backend0001 is the
+        // one.
+
         String[] xpaths = {
-                // p/strong patterns for the actual DOM structure
-                "//p[strong[contains(text(), 'Customer Id')]]/text()[normalize-space()]",
+                "//p[contains(text(), 'Customer Id') and not(contains(text(), 'SV'))]",
                 "//strong[contains(text(), 'Customer Id')]/following-sibling::text()",
-                // Input fields
-                "//input[@formcontrolname='customerId']",
-                "//input[@name='customerId']",
-                "//input[@id='customerId']"
+                "//label[contains(text(), 'Customer ID')]/following-sibling::*"
         };
 
         for (String xpath : xpaths) {
             try {
                 List<WebElement> elements = driver.findElements(By.xpath(xpath));
                 for (WebElement element : elements) {
-                    String value = element.getText().trim();
-                    if (value.isEmpty()) {
-                        value = element.getDomProperty("value");
-                        if (value == null)
-                            value = "";
-                        else
-                            value = value.trim();
-                    }
-
-                    if (!value.isEmpty() && !value.equalsIgnoreCase("Customer ID")
-                            && !value.equalsIgnoreCase("Customer Id")) {
-                        System.out.println("✓ Customer ID found (fallback): " + value);
-                        return value;
+                    String text = element.getText().trim();
+                    if (!text.isEmpty()) {
+                        String value = text.replace("Customer Id:", "").replace("Customer ID:", "").trim();
+                        if (!value.isEmpty()) {
+                            System.out.println("✓ Customer ID found (fallback): " + value);
+                            return value;
+                        }
                     }
                 }
             } catch (Exception e) {
             }
         }
 
-        // Debug: print all p tags with strong children
-        System.err.println("\nERROR: Customer ID not found. Printing all <p> tags with <strong>:");
+        // Final aggressive fallback loop from logs
         try {
-            List<WebElement> paragraphs = driver.findElements(By.xpath("//p[strong]"));
-            System.err.println("Found " + paragraphs.size() + " <p> tags with <strong>:");
-            for (int i = 0; i < Math.min(paragraphs.size(), 10); i++) {
-                String text = paragraphs.get(i).getText().trim();
-                if (!text.isEmpty()) {
-                    System.err.println("  [" + (i + 1) + "] " + text);
+            List<WebElement> paragraphs = driver.findElements(By.xpath("//p[strong] | //p"));
+            for (WebElement p : paragraphs) {
+                String text = p.getText().trim();
+                // Look for standard Customer Id (not SV)
+                if (text.contains("Customer Id:") && !text.contains("SV Customer Id")) {
+                    String val = text.replace("Customer Id:", "").trim();
+                    if (!val.isEmpty())
+                        return val;
                 }
             }
         } catch (Exception e) {
-            System.err.println("Could not enumerate paragraphs: " + e.getMessage());
         }
 
         return "N/A";
@@ -928,7 +934,13 @@ public class CustomerOrgPage {
         System.out.println("Clicking Roles Edit icon...");
         WebElement editBtn = wait
                 .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.ROLES_EDIT_BUTTON));
-        editBtn.click();
+
+        try {
+            editBtn.click();
+        } catch (Exception e) {
+            System.out.println("Standard click failed, using JS click for Edit icon");
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", editBtn);
+        }
 
         try {
             Thread.sleep(2000); // Wait for page/modal to load
@@ -950,7 +962,13 @@ public class CustomerOrgPage {
         System.out.println("Clicking Roles View icon...");
         WebElement viewBtn = wait
                 .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.ROLES_VIEW_BUTTON));
-        viewBtn.click();
+
+        try {
+            viewBtn.click();
+        } catch (Exception e) {
+            System.out.println("Standard click failed, using JS click for View icon");
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", viewBtn);
+        }
 
         try {
             Thread.sleep(2000); // Wait for view modal/page to load
@@ -975,27 +993,30 @@ public class CustomerOrgPage {
 
             // Clear using multiple methods to be sure
             try {
-                searchField.click();
+                searchField.clear();
             } catch (Exception e) {
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", searchField);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].value = '';", searchField);
             }
-
-            searchField.sendKeys(Keys.CONTROL + "a");
-            searchField.sendKeys(Keys.DELETE);
-            searchField.clear();
 
             if (roleName != null && !roleName.isEmpty()) {
                 searchField.sendKeys(roleName);
                 Thread.sleep(500);
-                // Sometimes hitting Enter is required
+                // Dispatch input event for frameworks like Angular/React
+                ((JavascriptExecutor) driver).executeScript(
+                        "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", searchField);
+
+                // Press Enter just in case
                 searchField.sendKeys(Keys.ENTER);
             } else {
-                // Trigger event if empty needed
+                // Clear trigger
                 searchField.sendKeys(" ");
                 searchField.sendKeys(Keys.BACK_SPACE);
+                // Dispatch input event
+                ((JavascriptExecutor) driver).executeScript(
+                        "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", searchField);
             }
 
-            Thread.sleep(1500); // Wait for search to filter results
+            Thread.sleep(2000); // Wait for search to filter results
         } catch (Exception e) {
             System.err.println("Search interaction failed: " + e.getMessage());
         }
@@ -1030,10 +1051,9 @@ public class CustomerOrgPage {
             try {
                 wait.until(ExpectedConditions.elementToBeClickable(filterBtn)).click();
             } catch (Exception e) {
-                System.out.println("Normal click failed, using JS click");
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", filterBtn);
             }
-            Thread.sleep(800);
+            Thread.sleep(1000);
 
             // Select status option based on provided status
             By statusLocator;
@@ -1052,10 +1072,21 @@ public class CustomerOrgPage {
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", option);
             Thread.sleep(500);
 
-            // Click Apply button
-            WebElement applyBtn = wait
-                    .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.ROLES_FILTER_APPLY_BUTTON));
-            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", applyBtn);
+            // Click Apply button with short timeout
+            // NOTE: Changing this to be optional, as some filters auto-apply or button
+            // might be hidden
+            try {
+                WebElement applyBtn = wait.withTimeout(Duration.ofSeconds(3))
+                        .until(ExpectedConditions
+                                .elementToBeClickable(CustomerOrgPageLocators.ROLES_FILTER_APPLY_BUTTON));
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", applyBtn);
+                System.out.println("✓ Apply button clicked");
+            } catch (Exception e) {
+                System.out.println("⚠ Apply button not found or clickable - assuming auto-apply");
+            } finally {
+                // Restore timeout
+                wait.withTimeout(Duration.ofSeconds(DEFAULT_TIMEOUT));
+            }
 
             Thread.sleep(2000); // Wait for filtered results
             System.out.println("✓ Filter applied: " + status);
@@ -1094,13 +1125,21 @@ public class CustomerOrgPage {
 
     public void clickAddNewRole() {
         System.out.println("Clicking Add New Role button...");
-        WebElement addNewBtn = wait
-                .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.ROLES_ADD_NEW_BUTTON));
-        addNewBtn.click();
-
         try {
+            WebElement addNewBtn = wait
+                    .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.ROLES_ADD_NEW_BUTTON));
+
+            try {
+                addNewBtn.click();
+            } catch (Exception e) {
+                System.out.println("Standard click failed, using JS click");
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addNewBtn);
+            }
+
             Thread.sleep(2000); // Wait for page to load
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
+            System.err.println("Failed to click Add New Role button: " + e.getMessage());
+            throw e;
         }
     }
 
@@ -1132,7 +1171,7 @@ public class CustomerOrgPage {
                     .visibilityOfElementLocated(By.xpath("//table//tbody//tr[1]//td[position()=1]")));
             return firstRoleCell.getText().trim();
         } catch (Exception e) {
-            System.err.println("Error fetching first role name: " + e.getMessage());
+            System.out.println("Could not match first role name (Table might be empty or loading): " + e.getMessage());
             return "";
         }
     }

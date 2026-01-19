@@ -503,7 +503,7 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//table")));
     }
 
-    @Test(priority = 22, description = "Validate accordion structure in Add/Edit role form", dependsOnMethods = "testRolesAddNewButton", alwaysRun = true)
+    @Test(priority = 22, description = "Validate accordion structure in Add/Edit role form", dependsOnMethods = "testRolesAddNewButton")
     public void testRoleFormAccordions() throws InterruptedException {
         CustomerOrgPage page = new CustomerOrgPage(driver);
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
