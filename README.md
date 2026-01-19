@@ -1,5 +1,8 @@
 # RCS Automation Framework Documentation
 
+> **Manager/Lead Summary:** For a high-level overview of coverage and ROI, please see [AUTOMATION_SUMMARY.md](AUTOMATION_SUMMARY.md).
+
+
 ## 📋 Project Overview
 
 **Project Name:** RCS_Automation  

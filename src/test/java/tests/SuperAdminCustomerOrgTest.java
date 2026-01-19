@@ -406,10 +406,18 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         System.out.println("Testing search with non-existent role name...");
         Thread.sleep(500); // Wait before search
         page.searchRole("NONEXISTENT_ROLE_XYZ123");
-        Thread.sleep(1500); // Wait for search results
+        Thread.sleep(2000); // Wait for search results to load
 
-        boolean noData = page.isNoDataMessageDisplayed() || page.getRolesTableRowCount() == 0;
-        Assert.assertTrue(noData, "Should show 'No data found' message or empty table for non-existent role");
+        // Check for either explicit "No data" message OR 0 rows in table
+        boolean isMessageDisplayed = page.isNoDataMessageDisplayed();
+        int rowCount = page.getRolesTableRowCount();
+
+        System.out.println("No Data Message Displayed: " + isMessageDisplayed);
+        System.out.println("Role Table Row Count: " + rowCount);
+
+        boolean noData = isMessageDisplayed || rowCount == 0;
+        Assert.assertTrue(noData, "Should show 'No data found' message or empty table for non-existent role. Found "
+                + rowCount + " rows.");
         System.out.println("✓ Search correctly shows no results for non-existent role");
     }
 

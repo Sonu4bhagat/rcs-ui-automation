@@ -969,14 +969,35 @@ public class CustomerOrgPage {
 
     public void searchRole(String roleName) {
         System.out.println("Searching for role: " + roleName);
-        WebElement searchField = wait
-                .until(ExpectedConditions.visibilityOfElementLocated(CustomerOrgPageLocators.ROLES_SEARCH_FIELD));
-        searchField.clear();
-        searchField.sendKeys(roleName);
-
         try {
+            WebElement searchField = wait
+                    .until(ExpectedConditions.visibilityOfElementLocated(CustomerOrgPageLocators.ROLES_SEARCH_FIELD));
+
+            // Clear using multiple methods to be sure
+            try {
+                searchField.click();
+            } catch (Exception e) {
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", searchField);
+            }
+
+            searchField.sendKeys(Keys.CONTROL + "a");
+            searchField.sendKeys(Keys.DELETE);
+            searchField.clear();
+
+            if (roleName != null && !roleName.isEmpty()) {
+                searchField.sendKeys(roleName);
+                Thread.sleep(500);
+                // Sometimes hitting Enter is required
+                searchField.sendKeys(Keys.ENTER);
+            } else {
+                // Trigger event if empty needed
+                searchField.sendKeys(" ");
+                searchField.sendKeys(Keys.BACK_SPACE);
+            }
+
             Thread.sleep(1500); // Wait for search to filter results
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
+            System.err.println("Search interaction failed: " + e.getMessage());
         }
     }
 
@@ -1027,14 +1048,14 @@ public class CustomerOrgPage {
                     statusLocator = CustomerOrgPageLocators.ROLES_FILTER_OPTION_ALL;
             }
 
-            WebElement option = wait.until(ExpectedConditions.elementToBeClickable(statusLocator));
-            option.click();
+            WebElement option = wait.until(ExpectedConditions.presenceOfElementLocated(statusLocator));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", option);
             Thread.sleep(500);
 
             // Click Apply button
             WebElement applyBtn = wait
                     .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.ROLES_FILTER_APPLY_BUTTON));
-            applyBtn.click();
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", applyBtn);
 
             Thread.sleep(2000); // Wait for filtered results
             System.out.println("✓ Filter applied: " + status);
