@@ -221,7 +221,20 @@ public class DashboardPage {
         }
 
         System.out.println("Navigating to service: " + serviceName);
-        WebElement serviceElement = wait.until(ExpectedConditions.elementToBeClickable(locator));
+        WebElement serviceElement = null;
+
+        try {
+            serviceElement = wait.until(ExpectedConditions.elementToBeClickable(locator));
+        } catch (Exception e) {
+            System.out.println("⚠️ Element not clickable via standard wait. Trying presence check for JS click...");
+            try {
+                serviceElement = wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+                System.out.println("✓ Element found via presence check.");
+            } catch (Exception ex) {
+                System.out.println("❌ Element not found even via presence check.");
+                throw ex;
+            }
+        }
 
         // Use JavaScript click in headless mode to avoid overlay issues
         if (base.DriverFactory.isHeadlessModeEnabled()) {
@@ -232,7 +245,12 @@ public class DashboardPage {
             }
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", serviceElement);
         } else {
-            serviceElement.click();
+            try {
+                serviceElement.click();
+            } catch (Exception e) {
+                System.out.println("Standard click failed (" + e.getMessage() + "). Trying JS Click...");
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", serviceElement);
+            }
         }
     }
 

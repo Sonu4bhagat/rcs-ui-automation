@@ -193,8 +193,18 @@ public class LoginPage {
             WebElement bestCard = null;
 
             for (WebElement card : cards) {
+                String cardText = card.getText();
                 int serviceCount = card.findElements(LoginPageLocators.WALLET_SERVICE_ITEMS).size();
-                System.out.println("  Found wallet card with " + serviceCount + " services.");
+                System.out.println("  Found wallet card: [" + cardText.replace("\n", ", ") + "] with " + serviceCount
+                        + " services.");
+
+                // Prioritize the known test wallet from screenshot
+                if (cardText.contains("RETROL38")) {
+                    System.out.println("  ✓ Found target test wallet: RETROL38");
+                    bestCard = card;
+                    maxServices = 999; // Force selection
+                    break;
+                }
 
                 if (serviceCount > maxServices) {
                     maxServices = serviceCount;
@@ -203,7 +213,7 @@ public class LoginPage {
             }
 
             if (bestCard != null) {
-                System.out.println("Clicking wallet with " + maxServices + " services.");
+                System.out.println("Clicking selected wallet.");
                 // Ensure button is clickable
                 WebElement openBtn = bestCard.findElement(By.xpath(".//button[contains(text(), 'Open')]"));
                 wait.until(ExpectedConditions.elementToBeClickable(openBtn)).click();

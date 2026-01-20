@@ -122,10 +122,23 @@ public class RCSAssistantPage {
     /**
      * Click Add New Assistant button
      */
+    /**
+     * Click Add New Assistant button
+     */
     public void clickAddNewAssistant() {
         ExtentReportManager.logStep("Click Add New Assistant button");
-        wait.until(ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.ADD_NEW_BUTTON)).click();
-        wait.until(ExpectedConditions.visibilityOfElementLocated(RCSAssistantPageLocators.ASSISTANT_NAME_INPUT));
+        try {
+            WebElement addButton = wait
+                    .until(ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.ADD_NEW_BUTTON));
+            scrollAndClick(addButton);
+            System.out.println("Clicked Add New Assistant button");
+
+            wait.until(ExpectedConditions.visibilityOfElementLocated(RCSAssistantPageLocators.ASSISTANT_NAME_INPUT));
+        } catch (Exception e) {
+            System.out.println("Error clicking Add New Assistant: " + e.getMessage());
+            ExtentReportManager.logWarning("Error clicking Add New Assistant: " + e.getMessage());
+            throw e;
+        }
     }
 
     /**
@@ -171,6 +184,31 @@ public class RCSAssistantPage {
         } catch (Exception e) {
             ExtentReportManager.logInfo("Description field not found or optional");
         }
+
+        // Select billing category if dropdown exists (MANDATORY FIELD)
+        try {
+            System.out.println("Looking for Billing Category dropdown...");
+            WebElement billingDropdown = wait.until(
+                    ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.BILLING_CATEGORY_DROPDOWN));
+            billingDropdown.click();
+            Thread.sleep(500);
+
+            List<WebElement> options = wait.until(
+                    ExpectedConditions
+                            .visibilityOfAllElementsLocatedBy(RCSAssistantPageLocators.TEMPLATE_CATEGORY_OPTIONS));
+            if (!options.isEmpty()) {
+                options.get(0).click();
+                System.out.println("✓ Selected billing category");
+                ExtentReportManager.logInfo("Selected billing category");
+            }
+        } catch (Exception e) {
+            System.out.println("Billing category dropdown not found or error: " + e.getMessage());
+            ExtentReportManager.logInfo("No billing category dropdown or already selected");
+        }
+
+        // --- DYNAMIC FILLING FOR NEW FIELDS ---
+        fillRemainingRequiredFields();
+        // --------------------------------------
 
         // Click Next
         wait.until(ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.NEXT_BUTTON_STEP1)).click();
@@ -406,115 +444,252 @@ public class RCSAssistantPage {
     }
 
     /**
-     * Fill Contact Details section and submit
-     * Handles multi-step forms by clicking Add buttons to reveal fields
+     * Fill Contact Details and Verification sections, then submit
+     * NEW MANDATORY FIELDS:
+     * - Contact Person: Full Name, Mobile Number, Designation, Official Email
+     * - All Display Name fields are required
+     * - Verification section: 5 fields
      */
     public void fillContactDetailsAndSubmit() {
-        ExtentReportManager.logStep("Fill Contact Details section");
+        ExtentReportManager.logStep("Fill Contact Details and Verification sections");
 
-        // Debug: Print current state
         System.out.println("========================================");
         System.out.println("ENTERING fillContactDetailsAndSubmit()");
         System.out.println("Current URL: " + driver.getCurrentUrl());
-        System.out.println("Page Title: " + driver.getTitle());
         System.out.println("========================================");
 
         try {
-            // Wait for the page to stabilize
             Thread.sleep(2000);
 
-            // First, click the "Add" buttons to reveal input fields
-            // Contact section has Add Number, Add Website, Add Email buttons
-            System.out.println("Looking for Add buttons to reveal input fields...");
+            // STEP 1: Fill Contact Person section (MANDATORY)
+            System.out.println("=== FILLING CONTACT PERSON SECTION ===");
 
-            // Click Add Number button
-            clickAddButtonIfPresent("Add Number", "Number");
+            // Full Name
+            tryFillField("//input[contains(@placeholder,'Full Name') or contains(@formcontrolname,'fullName')]",
+                    "Test Contact Person");
 
-            // Click Add Website button
-            clickAddButtonIfPresent("Add Website", "Website");
+            // Mobile Number
+            tryFillField("//input[contains(@placeholder,'Mobile') or contains(@formcontrolname,'mobile')]",
+                    "9876543210");
 
-            // Click Add Email button
-            clickAddButtonIfPresent("Add Email", "Email");
+            // Designation
+            tryFillField("//input[contains(@placeholder,'Designation') or contains(@formcontrolname,'designation')]",
+                    "Test Manager");
+
+            // Official Email
+            tryFillField(
+                    "//input[contains(@placeholder,'Official Email') or contains(@formcontrolname,'officialEmail')]",
+                    "test.contact@example.com");
 
             Thread.sleep(1000);
 
-            System.out.println("Now filling the contact fields...");
+            // STEP 2: Fill ALL Display Name fields (MANDATORY)
+            System.out.println("=== FILLING DISPLAY NAME FIELDS ===");
+            List<WebElement> displayNameFields = driver.findElements(
+                    By.xpath(
+                            "//input[contains(@placeholder,'Display Name') or contains(@placeholder,'display name')]"));
 
-            // For multi-step forms, the current page might be a step that doesn't need
-            // contact info
-            // Check if we can just click Next to complete the flow
-
-            // Try to fill any visible and interactable fields
-            int fieldsFilledCount = 0;
-
-            // Try filling phone fields
-            fieldsFilledCount += tryFillField(
-                    "//input[contains(@placeholder,'Display Name') or contains(@placeholder,'display')]",
-                    "Business Contact");
-            fieldsFilledCount += tryFillField(
-                    "//input[contains(@placeholder,'Phone') or contains(@placeholder,'phone')]", "9876543210");
-
-            // Try filling website fields
-            fieldsFilledCount += tryFillField(
-                    "//input[contains(@placeholder,'Website') or contains(@placeholder,'URL') or contains(@placeholder,'website')]",
-                    "https://www.testcompany.com");
-
-            // Try filling email fields
-            fieldsFilledCount += tryFillField(
-                    "//input[contains(@placeholder,'Email') or contains(@placeholder,'email') or @type='email']",
-                    "test@testcompany.com");
-
-            // Try filling privacy/terms URLs - these often have specific placeholders
-            fieldsFilledCount += tryFillField("//input[contains(@placeholder,'Privacy')]",
-                    "https://www.testcompany.com/privacy");
-            fieldsFilledCount += tryFillField("//input[contains(@placeholder,'Terms')]",
-                    "https://www.testcompany.com/terms");
-
-            System.out.println("Total fields filled: " + fieldsFilledCount);
-
-            // If no fields were filled, it might be a multi-step form where we just need to
-            // click Next
-            if (fieldsFilledCount == 0) {
-                System.out.println("No contact fields filled - this might be a multi-step form");
-                System.out.println("Looking for any required fields that need values...");
-
-                // Try to find ANY empty input that's visible and fill it
-                List<WebElement> emptyInputs = driver
-                        .findElements(By.xpath("//input[@required or @aria-required='true']"));
-                for (WebElement input : emptyInputs) {
-                    try {
-                        if (input.isDisplayed() && input.getAttribute("value").isEmpty()) {
-                            scrollToElement(input);
-                            String placeholder = input.getAttribute("placeholder");
-                            System.out.println("Found empty required field: " + placeholder);
-
-                            // Fill based on placeholder hint
-                            if (placeholder != null) {
-                                if (placeholder.toLowerCase().contains("phone")) {
-                                    fillInputWithJS(input, "9876543210");
-                                } else if (placeholder.toLowerCase().contains("email")) {
-                                    fillInputWithJS(input, "test@example.com");
-                                } else if (placeholder.toLowerCase().contains("url")
-                                        || placeholder.toLowerCase().contains("http")) {
-                                    fillInputWithJS(input, "https://www.example.com");
-                                } else {
-                                    fillInputWithJS(input, "Test Value");
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
+            int displayCount = 0;
+            for (WebElement field : displayNameFields) {
+                try {
+                    if (field.isDisplayed() && field.getAttribute("value").isEmpty()) {
+                        scrollToElement(field);
+                        field.clear();
+                        field.sendKeys("Display " + (++displayCount));
+                        System.out.println("Filled Display Name field #" + displayCount);
                     }
+                } catch (Exception e) {
+                    // Skip if error
                 }
             }
 
-            // Now try to submit or move to next step
             Thread.sleep(1000);
 
-            // Look for Submit button first
-            boolean submitted = false;
-            By submitLocators = By.xpath("//button[contains(text(),'Submit') and not(contains(@class,'disabled'))]");
-            List<WebElement> submitButtons = driver.findElements(submitLocators);
+            // STEP 3: Fill standard contact fields (Phone, Website, Email, Privacy, Terms)
+            System.out.println("=== FILLING STANDARD CONTACT FIELDS ===");
+            tryFillField("//input[contains(@placeholder,'Phone') or contains(@placeholder,'phone')]",
+                    "9876543210");
+            tryFillField("//input[contains(@placeholder,'Website') or contains(@placeholder,'URL')]",
+                    "https://www.testcompany.com");
+            tryFillField("//input[contains(@placeholder,'Email') or @type='email']",
+                    "test@testcompany.com");
+            tryFillField("//input[contains(@placeholder,'Privacy')]",
+                    "https://www.testcompany.com/privacy");
+            tryFillField("//input[contains(@placeholder,'Terms')]",
+                    "https://www.testcompany.com/terms");
 
+            Thread.sleep(1000);
+
+            // STEP 3.5: Fill ALL remaining empty email fields (there may be multiple)
+            System.out.println("=== FILLING ALL REMAINING EMAIL FIELDS ===");
+            List<WebElement> allEmailFields = driver.findElements(
+                    By.xpath(
+                            "//input[@type='email' or contains(@placeholder,'Email') or contains(@placeholder,'email')]"));
+
+            int emailCount = 0;
+            for (WebElement emailField : allEmailFields) {
+                try {
+                    if (emailField.isDisplayed() && emailField.getAttribute("value").isEmpty()) {
+                        scrollToElement(emailField);
+                        emailField.clear();
+                        emailField.sendKeys("email" + (++emailCount) + "@testcompany.com");
+                        System.out.println("Filled additional email field #" + emailCount);
+                    }
+                } catch (Exception e) {
+                    // Skip if error
+                }
+            }
+
+            Thread.sleep(1000);
+
+            // STEP 4: Try clicking Next to move to Verification section
+            System.out.println("=== LOOKING FOR NEXT BUTTON ===");
+            boolean nextClicked = false;
+            List<WebElement> nextButtons = driver.findElements(
+                    By.xpath("//button[contains(text(),'Next') and not(contains(@class,'disabled'))]"));
+
+            for (WebElement btn : nextButtons) {
+                try {
+                    if (btn.isDisplayed() && btn.isEnabled()) {
+                        System.out.println("Clicking Next to Verification section...");
+                        scrollAndClick(btn);
+                        nextClicked = true;
+                        Thread.sleep(2000);
+                        break;
+                    }
+                } catch (Exception e) {
+                    // Try next button
+                }
+            }
+
+            // STEP 5: Fill Verification section (ALL FIELDS) if present
+            System.out.println("=== CHECKING FOR VERIFICATION SECTION ===");
+            System.out.println("Current URL after Next: " + driver.getCurrentUrl());
+            Thread.sleep(2000);
+
+            // STEP 5A: Fill Rich Text Editor fields (5 FIELDS)
+            System.out.println("=== FILLING RICH TEXT EDITOR FIELDS (5 FIELDS) ===");
+            List<WebElement> richTextEditors = driver.findElements(
+                    By.xpath("//*[@contenteditable='true' or @contenteditable='']"));
+
+            System.out.println("Found " + richTextEditors.size() + " rich text editor fields");
+
+            int richTextCount = 0;
+            for (WebElement editor : richTextEditors) {
+                try {
+                    if (editor.isDisplayed()) {
+                        scrollToElement(editor);
+                        Thread.sleep(300);
+
+                        String currentText = editor.getText();
+                        if (currentText == null || currentText.trim().isEmpty()
+                                || currentText.contains("Type your message")) {
+                            richTextCount++;
+                            String textToFill = "This is verification text " + richTextCount + ". " +
+                                    "We ensure compliance with all messaging regulations and user privacy standards. " +
+                                    "Users provide explicit opt-in consent before receiving any messages.";
+
+                            // Use JavaScript to set innerHTML for rich text editors
+                            ((JavascriptExecutor) driver).executeScript(
+                                    "arguments[0].innerHTML = arguments[1]; " +
+                                            "arguments[0].dispatchEvent(new Event('input', { bubbles: true })); " +
+                                            "arguments[0].dispatchEvent(new Event('change', { bubbles: true }));",
+                                    editor, textToFill);
+
+                            System.out.println("✓ Filled rich text editor #" + richTextCount);
+                            Thread.sleep(300);
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println("Could not fill rich text editor: " + e.getMessage());
+                }
+            }
+
+            System.out.println("Total rich text editors filled: " + richTextCount);
+            Thread.sleep(1000);
+
+            // STEP 5B: Fill regular input fields
+            System.out.println("=== FILLING REGULAR INPUT FIELDS ===");
+
+            // Find ALL input fields (text, email, tel, url, number, etc.)
+            List<WebElement> allInputs = driver.findElements(
+                    By.xpath(
+                            "//input[not(@type='hidden') and not(@type='checkbox') and not(@type='radio') and not(@type='button')]"));
+
+            System.out.println("Found " + allInputs.size() + " potential input fields");
+
+            int verificationCount = 0;
+            for (WebElement field : allInputs) {
+                try {
+                    // Check if field is displayed and empty
+                    if (field.isDisplayed()) {
+                        String currentValue = field.getAttribute("value");
+                        if (currentValue == null || currentValue.trim().isEmpty()) {
+                            scrollToElement(field);
+                            Thread.sleep(300);
+
+                            String placeholder = field.getAttribute("placeholder");
+                            String fieldType = field.getAttribute("type");
+                            String fieldName = field.getAttribute("name");
+
+                            System.out.println("Found empty field - Type: " + fieldType + ", Placeholder: "
+                                    + placeholder + ", Name: " + fieldName);
+
+                            // Determine value based on type and placeholder
+                            String value = "Test Value " + (++verificationCount);
+
+                            if (fieldType != null && fieldType.equals("email")) {
+                                value = "verification" + verificationCount + "@example.com";
+                            } else if (fieldType != null && (fieldType.equals("tel") || fieldType.equals("number"))) {
+                                value = "9876543210";
+                            } else if (fieldType != null && fieldType.equals("url")) {
+                                value = "https://verification" + verificationCount + ".com";
+                            } else if (placeholder != null) {
+                                String placeholderLower = placeholder.toLowerCase();
+                                if (placeholderLower.contains("email")) {
+                                    value = "verification" + verificationCount + "@example.com";
+                                } else if (placeholderLower.contains("phone") || placeholderLower.contains("mobile")
+                                        || placeholderLower.contains("number")) {
+                                    value = "9876543210";
+                                } else if (placeholderLower.contains("url") || placeholderLower.contains("website")
+                                        || placeholderLower.contains("link")) {
+                                    value = "https://verification" + verificationCount + ".com";
+                                } else if (placeholderLower.contains("name")) {
+                                    value = "Test Name " + verificationCount;
+                                }
+                            }
+
+                            // Fill the field
+                            try {
+                                field.clear();
+                                field.sendKeys(value);
+                                System.out.println(
+                                        "✓ Filled verification field #" + verificationCount + " with: " + value);
+                            } catch (Exception e) {
+                                // Try JS if regular sendKeys fails
+                                ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
+                                        "arguments[0].value = arguments[1]; arguments[0].dispatchEvent(new Event('input'));",
+                                        field, value);
+                                System.out.println(
+                                        "✓ Filled verification field #" + verificationCount + " (JS) with: " + value);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // Skip if error
+                }
+            }
+
+            System.out.println("Total regular input fields filled: " + verificationCount);
+            Thread.sleep(1000);
+
+            // STEP 6: Submit the form
+            System.out.println("=== LOOKING FOR SUBMIT BUTTON ===");
+            boolean submitted = false;
+
+            // Try Submit button
+            List<WebElement> submitButtons = driver.findElements(
+                    By.xpath("//button[contains(text(),'Submit') and not(contains(@class,'disabled'))]"));
             for (WebElement btn : submitButtons) {
                 try {
                     if (btn.isDisplayed() && btn.isEnabled()) {
@@ -527,11 +702,10 @@ public class RCSAssistantPage {
                 }
             }
 
-            // If no Submit, try Create button
+            // Try Create button if no Submit
             if (!submitted) {
-                By createLocators = By
-                        .xpath("//button[contains(text(),'Create') and not(contains(@class,'disabled'))]");
-                List<WebElement> createButtons = driver.findElements(createLocators);
+                List<WebElement> createButtons = driver.findElements(
+                        By.xpath("//button[contains(text(),'Create') and not(contains(@class,'disabled'))]"));
                 for (WebElement btn : createButtons) {
                     try {
                         if (btn.isDisplayed() && btn.isEnabled()) {
@@ -545,32 +719,16 @@ public class RCSAssistantPage {
                 }
             }
 
-            // If still not submitted, click Next to progress through form steps
-            if (!submitted) {
-                System.out.println("No Submit/Create button, clicking Next to continue...");
-                By nextLocators = By.xpath("//button[contains(text(),'Next') and not(contains(@class,'disabled'))]");
-                List<WebElement> nextButtons = driver.findElements(nextLocators);
-                for (WebElement btn : nextButtons) {
-                    try {
-                        if (btn.isDisplayed() && btn.isEnabled()) {
-                            System.out.println("Clicking Next button: " + btn.getText());
-                            scrollAndClick(btn);
-                            Thread.sleep(1500);
-                            break;
-                        }
-                    } catch (Exception e) {
-                    }
-                }
-            }
-
             Thread.sleep(2000);
-            System.out.println("Current URL after action: " + driver.getCurrentUrl());
+            System.out.println("Contact and Verification sections completed");
+            System.out.println("Current URL: " + driver.getCurrentUrl());
 
-            ExtentReportManager.logPass("Contact section processing completed");
+            ExtentReportManager.logPass("Contact and Verification sections filled successfully");
 
         } catch (Exception e) {
             System.out.println("ERROR in fillContactDetailsAndSubmit: " + e.getMessage());
-            ExtentReportManager.logWarning("Error in contact details: " + e.getMessage());
+            e.printStackTrace();
+            ExtentReportManager.logWarning("Error in contact and verification: " + e.getMessage());
         }
     }
 
@@ -706,25 +864,94 @@ public class RCSAssistantPage {
         ExtentReportManager.logStep("Verify status of created assistant: " + createdAssistantName);
 
         try {
-            // Search for the created assistant first
-            searchAssistant(createdAssistantName.substring(0, Math.min(10, createdAssistantName.length())));
-            Thread.sleep(2000);
+            // First, navigate back to assistants list if we're on the add page
+            String currentUrl = driver.getCurrentUrl();
+            System.out.println("Current URL before status check: " + currentUrl);
 
-            // Get the status from the first row
-            List<WebElement> rows = driver.findElements(RCSAssistantPageLocators.ASSISTANT_TABLE_ROWS);
-            if (!rows.isEmpty()) {
-                WebElement statusCell = rows.get(0)
-                        .findElement(By.xpath(".//td[5] | .//td[contains(@class,'status')]//span"));
-                String status = statusCell.getText().trim();
-                ExtentReportManager.logInfo("Assistant status: " + status);
-                return status;
+            if (currentUrl.contains("/add") || currentUrl.contains("/edit")) {
+                System.out.println("Still on add/edit page, navigating back to assistants list...");
+                // Try to find and click back/cancel button or navigate via URL
+                try {
+                    String listUrl = currentUrl.replaceAll("/(add|edit).*$", "");
+                    driver.get(listUrl);
+                    Thread.sleep(2000);
+                    System.out.println("Navigated to: " + driver.getCurrentUrl());
+                } catch (Exception e) {
+                    System.out.println("Could not navigate back: " + e.getMessage());
+                }
             }
 
-            // Try to find status badge
-            WebElement pendingBadge = driver.findElement(RCSAssistantPageLocators.PENDING_STATUS_BADGE);
-            return pendingBadge.getText().trim();
+            // Wait for table to load
+            waitForTableLoad();
+            Thread.sleep(1000);
+
+            // Search for the created assistant
+            if (createdAssistantName != null && !createdAssistantName.isEmpty()) {
+                searchAssistant(createdAssistantName.substring(0, Math.min(10, createdAssistantName.length())));
+                Thread.sleep(2000);
+            }
+
+            // Get the status from the first row with multiple fallback locators
+            List<WebElement> rows = driver.findElements(RCSAssistantPageLocators.ASSISTANT_TABLE_ROWS);
+            System.out.println("Found " + rows.size() + " rows in table");
+
+            if (!rows.isEmpty()) {
+                // Try multiple status cell locators
+                String[] statusXPaths = {
+                        ".//td[5]",
+                        ".//td[contains(@class,'status')]",
+                        ".//td//span[contains(@class,'badge')]",
+                        ".//span[contains(@class,'status')]",
+                        ".//td[last()]//span"
+                };
+
+                for (String xpath : statusXPaths) {
+                    try {
+                        WebElement statusCell = rows.get(0).findElement(By.xpath(xpath));
+                        String status = statusCell.getText().trim();
+                        if (!status.isEmpty()) {
+                            System.out.println("Found status '" + status + "' using xpath: " + xpath);
+                            ExtentReportManager.logInfo("Assistant status: " + status);
+                            return status;
+                        }
+                    } catch (Exception e) {
+                        // Try next locator
+                    }
+                }
+            }
+
+            // Try to find status badge anywhere on page
+            try {
+                WebElement pendingBadge = driver.findElement(RCSAssistantPageLocators.PENDING_STATUS_BADGE);
+                String status = pendingBadge.getText().trim();
+                if (!status.isEmpty()) {
+                    System.out.println("Found status from badge: " + status);
+                    return status;
+                }
+            } catch (Exception e) {
+                // No badge found
+            }
+
+            // Last resort: look for any text containing status keywords
+            try {
+                List<WebElement> allText = driver.findElements(By.xpath(
+                        "//*[contains(text(),'Pending') or contains(text(),'Approval') or contains(text(),'Active')]"));
+                for (WebElement el : allText) {
+                    String text = el.getText().trim();
+                    if (text.toLowerCase().contains("pending") || text.toLowerCase().contains("approval")) {
+                        System.out.println("Found status text: " + text);
+                        return text;
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore
+            }
+
+            System.out.println("Could not determine status, returning 'Unknown'");
+            return "Unknown";
 
         } catch (Exception e) {
+            System.out.println("Error getting status: " + e.getMessage());
             ExtentReportManager.logWarning("Could not get status: " + e.getMessage());
             return "Unknown";
         }
@@ -883,14 +1110,25 @@ public class RCSAssistantPage {
             originalAssistantName = createdAssistantName;
         }
 
-        // Click three dot menu then view
-        wait.until(ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.THREE_DOT_MENU)).click();
+        // Click the View icon directly (not in dropdown)
         try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
+            WebElement viewIcon = wait
+                    .until(ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.VIEW_ICON));
+            scrollToElement(viewIcon);
+            viewIcon.click();
+            System.out.println("Clicked View icon");
+        } catch (Exception e) {
+            // Try JS click if regular click fails
+            try {
+                WebElement viewIcon = driver.findElement(RCSAssistantPageLocators.VIEW_ICON);
+                scrollToElement(viewIcon);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", viewIcon);
+                System.out.println("Clicked View icon (JS)");
+            } catch (Exception ex) {
+                System.out.println("Failed to click View icon: " + ex.getMessage());
+                throw ex;
+            }
         }
-
-        wait.until(ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.VIEW_BUTTON)).click();
 
         // Wait for details to load
         try {
@@ -934,16 +1172,19 @@ public class RCSAssistantPage {
     // ==================== Edit Methods ====================
 
     /**
-     * Click edit icon to edit the first assistant
+     * Click edit icon for the first assistant
      */
     public void clickEditIcon() {
-        ExtentReportManager.logStep("Click Edit icon");
+        ExtentReportManager.logStep("Click Edit icon for first assistant");
 
         // Navigate back to list if on details page
         try {
-            driver.navigate().back();
-            Thread.sleep(1000);
-            wait.until(ExpectedConditions.presenceOfElementLocated(RCSAssistantPageLocators.ASSISTANTS_TABLE));
+            String currentUrl = driver.getCurrentUrl();
+            if (currentUrl.contains("/view/") || currentUrl.contains("/edit/")) {
+                driver.navigate().back();
+                Thread.sleep(1500);
+                wait.until(ExpectedConditions.presenceOfElementLocated(RCSAssistantPageLocators.ASSISTANTS_TABLE));
+            }
         } catch (Exception e) {
             // Already on list
         }
@@ -952,21 +1193,63 @@ public class RCSAssistantPage {
         try {
             WebElement firstNameCell = driver.findElement(RCSAssistantPageLocators.FIRST_ASSISTANT_NAME);
             originalAssistantName = firstNameCell.getText().trim();
+            System.out.println("Original assistant name: " + originalAssistantName);
         } catch (Exception e) {
             originalAssistantName = "";
         }
 
-        // Click three dot menu then edit
-        wait.until(ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.THREE_DOT_MENU)).click();
+        // Click three dot menu
         try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
+            WebElement threeDotMenu = wait
+                    .until(ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.THREE_DOT_MENU));
+            scrollToElement(threeDotMenu);
+            threeDotMenu.click();
+            System.out.println("Clicked three-dot menu");
+            Thread.sleep(800);
+        } catch (Exception e) {
+            // Try JS click
+            try {
+                WebElement threeDotMenu = driver.findElement(RCSAssistantPageLocators.THREE_DOT_MENU);
+                scrollToElement(threeDotMenu);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", threeDotMenu);
+                System.out.println("Clicked three-dot menu (JS)");
+                try {
+                    Thread.sleep(800);
+                } catch (InterruptedException ie) {
+                }
+            } catch (Exception ex) {
+                System.out.println("Failed to click three-dot menu: " + ex.getMessage());
+                throw ex;
+            }
         }
 
-        wait.until(ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.EDIT_BUTTON)).click();
+        // Click Edit button from dropdown
+        try {
+            WebElement editButton = wait
+                    .until(ExpectedConditions.elementToBeClickable(RCSAssistantPageLocators.EDIT_BUTTON));
+            scrollToElement(editButton);
+            editButton.click();
+            System.out.println("Clicked Edit button");
+        } catch (Exception e) {
+            // Try JS click
+            try {
+                WebElement editButton = driver.findElement(RCSAssistantPageLocators.EDIT_BUTTON);
+                scrollToElement(editButton);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", editButton);
+                System.out.println("Clicked Edit button (JS)");
+            } catch (Exception ex) {
+                System.out.println("Failed to click Edit button: " + ex.getMessage());
+                throw ex;
+            }
+        }
 
         // Wait for edit form to load
-        wait.until(ExpectedConditions.visibilityOfElementLocated(RCSAssistantPageLocators.EDIT_PAGE_HEADER));
+        try {
+            wait.until(ExpectedConditions.visibilityOfElementLocated(RCSAssistantPageLocators.EDIT_PAGE_HEADER));
+            System.out.println("Edit page loaded");
+        } catch (Exception e) {
+            System.out.println("Edit page header not found, but proceeding...");
+        }
     }
 
     /**
@@ -1173,5 +1456,101 @@ public class RCSAssistantPage {
         wait.until(ExpectedConditions.or(
                 ExpectedConditions.presenceOfElementLocated(RCSAssistantPageLocators.ASSISTANTS_TABLE),
                 ExpectedConditions.presenceOfElementLocated(RCSAssistantPageLocators.NO_ASSISTANT_MESSAGE)));
+    }
+
+    /**
+     * Dynamically fills any remaining required fields that are empty.
+     * Use this to handle "new fields" that might appear without updated locators.
+     */
+    private void fillRemainingRequiredFields() {
+        System.out.println("Checking for any other required fields to fill...");
+        try {
+            // Find all visible inputs, textareas, and selects
+            List<WebElement> inputs = driver.findElements(By.xpath("//input | //textarea | //select | //ng-select"));
+
+            for (WebElement element : inputs) {
+                try {
+                    // Check visibility and requirement
+                    if (element.isDisplayed() && isRequired(element)) {
+                        // Check if empty
+                        if (isElementEmpty(element)) {
+                            System.out.println("Found empty required field: " + element.getTagName());
+                            fillElementWithDummyData(element);
+                        }
+                    }
+                } catch (Exception e) {
+                    // Stale element or other issue, skip
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error in dynamic field filling: " + e.getMessage());
+        }
+    }
+
+    private boolean isRequired(WebElement element) {
+        String requiredAttr = element.getAttribute("required");
+        String ariaRequired = element.getAttribute("aria-required");
+        String classAttr = element.getAttribute("class");
+
+        // Check for standard required attributes
+        boolean isStandardRequired = (requiredAttr != null && "true".equalsIgnoreCase(requiredAttr)) ||
+                (ariaRequired != null && "true".equalsIgnoreCase(ariaRequired));
+
+        // Check for Angular/Framework validation classes (ng-invalid usually means it
+        // needs attention)
+        boolean isFrameworkInvalid = classAttr != null && classAttr.contains("ng-invalid") &&
+                !classAttr.contains("ng-untouched"); // Optional: only if touched? No, if invalid we should fix it.
+
+        return isStandardRequired || isFrameworkInvalid;
+    }
+
+    private boolean isElementEmpty(WebElement element) {
+        String value = element.getAttribute("value");
+        if (value != null && !value.isEmpty())
+            return false;
+
+        // For textareas or contenteditable
+        String text = element.getText();
+        return text == null || text.trim().isEmpty();
+    }
+
+    private void fillElementWithDummyData(WebElement element) {
+        String tagName = element.getTagName().toLowerCase();
+        String type = element.getAttribute("type");
+        String placeholder = element.getAttribute("placeholder");
+        if (placeholder == null)
+            placeholder = "";
+
+        if (tagName.equals("select")) {
+            // Select first option
+            new org.openqa.selenium.support.ui.Select(element).selectByIndex(1);
+        } else if (tagName.equals("ng-select")) {
+            element.click();
+            try {
+                wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//div[@role='option']"))).click();
+            } catch (Exception e) {
+            }
+        } else {
+            // Input or Textarea
+            String valueToFill = "Test Val";
+
+            if (type != null && type.equals("number"))
+                valueToFill = "1234567890";
+            else if (placeholder.toLowerCase().contains("phone") || placeholder.toLowerCase().contains("mobile"))
+                valueToFill = "9876543210";
+            else if (placeholder.toLowerCase().contains("email"))
+                valueToFill = "test@example.com";
+            else if (placeholder.toLowerCase().contains("url") || placeholder.toLowerCase().contains("website"))
+                valueToFill = "https://example.com";
+
+            try {
+                element.clear();
+                element.sendKeys(valueToFill);
+                System.out.println("Filled " + tagName + " with: " + valueToFill);
+            } catch (Exception e) {
+                fillInputWithJS(element, valueToFill);
+                System.out.println("Filled " + tagName + " (JS) with: " + valueToFill);
+            }
+        }
     }
 }

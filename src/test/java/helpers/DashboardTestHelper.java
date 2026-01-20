@@ -11,8 +11,10 @@ import pages.DashboardPage;
 public class DashboardTestHelper {
 
     private DashboardPage dashboardPage;
+    private WebDriver driver;
 
     public DashboardTestHelper(WebDriver driver) {
+        this.driver = driver;
         this.dashboardPage = new DashboardPage(driver);
     }
 
@@ -29,6 +31,33 @@ public class DashboardTestHelper {
         System.out.println("========================================");
 
         try {
+            // FIRST: Ensure we're on the dashboard, not stuck on select-wallet
+            String currentUrl = driver.getCurrentUrl();
+            System.out.println("Current URL before navigation: " + currentUrl);
+
+            if (currentUrl.contains("/select-wallet") || currentUrl.contains("/login")) {
+                System.out.println("⚠️ Not on dashboard, navigating to dashboard first...");
+                // Navigate to dashboard by going to services first
+                String baseUrl = currentUrl.split("/select-wallet")[0];
+                if (currentUrl.contains("/login")) {
+                    baseUrl = currentUrl.split("/login")[0];
+                }
+                // Extract customer ID from URL if present
+                String dashboardUrl = baseUrl + "/dashboard";
+                if (currentUrl.contains("/customer/")) {
+                    String[] parts = currentUrl.split("/customer/");
+                    if (parts.length > 1) {
+                        String customerId = parts[1].split("/")[0];
+                        dashboardUrl = baseUrl + "/customer/" + customerId + "/dashboard";
+                    }
+                }
+                System.out.println("Navigating to: " + dashboardUrl);
+                driver.get(dashboardUrl);
+                Thread.sleep(2000);
+                currentUrl = driver.getCurrentUrl();
+                System.out.println("After dashboard navigation, URL: " + currentUrl);
+            }
+
             // Step 1: Navigate to service
             System.out.println("Step 1: Navigating to " + serviceName + "...");
             dashboardPage.clickService(serviceName);

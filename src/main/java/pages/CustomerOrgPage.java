@@ -1139,7 +1139,7 @@ public class CustomerOrgPage {
             Thread.sleep(2000); // Wait for page to load
         } catch (Exception e) {
             System.err.println("Failed to click Add New Role button: " + e.getMessage());
-            throw e;
+            throw new RuntimeException("Failed to click Add New Role button", e);
         }
     }
 

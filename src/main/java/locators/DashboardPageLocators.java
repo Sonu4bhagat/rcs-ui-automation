@@ -59,14 +59,14 @@ public class DashboardPageLocators {
 
         // Service Links (Sidebar or Menu)
         public static final By SERVICE_SMS = By.xpath("//span[normalize-space()='SMS']");
-        public static final By SERVICE_RCS = By.xpath("//span[normalize-space()='RCS']");
+        public static final By SERVICE_RCS = By.xpath("//*[contains(text(),'RCS')]");
         public static final By SERVICE_OBD = By.xpath("//span[normalize-space()='OBD']"); // Or Voice
         public static final By SERVICE_IVR = By.xpath("//span[normalize-space()='IVR']");
         public static final By SERVICE_WHATSAPP = By
                         .xpath("//span[normalize-space()='WhatsApp' or normalize-space()='WABA']");
         public static final By SERVICE_CCS = By.xpath("//span[normalize-space()='CCS']");
         public static final By SERVICE_LIVE_AGENT = By
-                        .xpath("//span[normalize-space()='Live Agent' or normalize-space()='LiveAgent' or normalize-space()='liveagent']");
+                        .xpath("//*[contains(text(),'LIVEAGENT_CHAT')] | //*[normalize-space()='Live Agent']");
 
         // Filter Section (Dashboard)
         // Updated to handle both text 'Filter' and common icons (like mat-icon

@@ -60,6 +60,8 @@ public class RCSAssistantPageLocators {
                         .xpath("//ng-select[@placeholder='Select Template Category'] | //div[contains(@class,'ng-select')]");
         public static final By TEMPLATE_CATEGORY_OPTIONS = By
                         .xpath("//span[@class='ng-option-label'] | //div[@role='option']");
+        public static final By BILLING_CATEGORY_DROPDOWN = By
+                        .xpath("//ng-select[@placeholder='Select Billing Category'] | //ng-select[@formcontrolname='billingCategory']");
         public static final By NEXT_BUTTON_STEP1 = By.xpath("(//button[contains(text(),'Next')])[1]");
 
         // Branding Section
@@ -114,6 +116,17 @@ public class RCSAssistantPageLocators {
         // ==================== View/Edit Actions ====================
         public static final By THREE_DOT_MENU = By
                         .xpath("//button[@aria-label='Assistants Action Options'] | //button[contains(@class,'dropdown-toggle')]");
+        // View Icon (direct click, not in dropdown)
+        public static final By VIEW_ICON = By.xpath(
+                        "//i[contains(@class,'bi-eye')] | " +
+                                        "//button[contains(@title,'View')] | " +
+                                        "//a[contains(@title,'View')] | " +
+                                        "//*[contains(@class,'view-icon')] | " +
+                                        "//td//em[contains(@class,'eye')] | " +
+                                        "//span[contains(@class,'bi-eye')] | " +
+                                        "(//button | //a)[.//*[contains(@class,'eye')]][1]");
+
+        // Edit is in three-dot menu
         public static final By VIEW_BUTTON = By
                         .xpath("//a[contains(@class,'dropdown-item') and contains(text(),'View')]");
         public static final By EDIT_BUTTON = By

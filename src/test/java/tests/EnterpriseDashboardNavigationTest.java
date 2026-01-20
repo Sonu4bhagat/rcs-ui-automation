@@ -13,6 +13,7 @@ public class EnterpriseDashboardNavigationTest extends BaseTest {
 
     @BeforeClass
     public void setupPages() {
+        retainSession = true; // Keep session across all tests to maintain wallet selection
         loginPage = new LoginPage(driver);
         dashboardHelper = new DashboardTestHelper(driver);
     }
