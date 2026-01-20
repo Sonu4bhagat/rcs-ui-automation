@@ -794,10 +794,21 @@ public class EnterpriseReportsPage {
             // Click the redirect icon
             By locator = EnterpriseReportsPageLocators.getRedirectIconByRow(row);
             WebElement redirectIcon = wait.until(ExpectedConditions.elementToBeClickable(locator));
-            redirectIcon.click();
+
+            // Scroll into view to avoid interception
+            ((JavascriptExecutor) driver)
+                    .executeScript("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", redirectIcon);
+            Thread.sleep(500);
+
+            try {
+                redirectIcon.click();
+            } catch (Exception e) {
+                System.out.println("Standard click failed, trying JS click for redirect icon...");
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", redirectIcon);
+            }
             System.out.println("Clicked redirect icon for row: " + row);
 
-            Thread.sleep(3000); // Wait for redirection
+            Thread.sleep(5000); // Wait for redirection (increased from 3s)
         } catch (Exception e) {
             System.out.println("Error clicking redirect icon: " + e.getMessage());
             throw new RuntimeException("Failed to click redirect to service node icon", e);

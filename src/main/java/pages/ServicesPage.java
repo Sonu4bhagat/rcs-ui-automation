@@ -10,6 +10,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import org.openqa.selenium.TimeoutException;
 
 public class ServicesPage {
 
@@ -26,14 +27,23 @@ public class ServicesPage {
         System.out.println("Current URL before: " + driver.getCurrentUrl());
 
         try {
-            // Robustly wait for sidebar/header to ensure we are on a page with the menu
+            // Robustly wait for sidebar/header
             wait.until(ExpectedConditions.or(
                     ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.PAGE_HEADER),
                     ExpectedConditions.visibilityOfElementLocated(
                             By.xpath("//div[contains(@class, 'sidenav') or contains(@class, 'menu')]"))));
 
-            WebElement servicesTab = wait
-                    .until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.SERVICES_TAB));
+            WebElement servicesTab;
+            try {
+                servicesTab = wait.until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.SERVICES_TAB));
+            } catch (TimeoutException toe) {
+                // Fallback: Check presence for headless where visibility might be tricky due to
+                // window size
+                System.out.println("Services Tab not clickable/visible. Checking presence...");
+                servicesTab = wait
+                        .until(ExpectedConditions.presenceOfElementLocated(ServicesPageLocators.SERVICES_TAB));
+            }
+
             servicesTab.click();
         } catch (Exception e) {
             System.out.println("Standard click failed/timed out. Trying JS Click...");
@@ -92,10 +102,11 @@ public class ServicesPage {
             removeBlockingIframes();
         }
 
-        // Wait for page to fully load
+        // Wait for page to fully load - wait for ANY card to be visible
         try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//div[contains(@class, 'card')]")));
+        } catch (Exception e) {
+            System.out.println("Warning: Timed out waiting for generic cards.");
         }
 
         // Print page source snippet for debugging (first 500 chars)
@@ -111,6 +122,9 @@ public class ServicesPage {
         }
 
         try {
+            // Updated to be case insensitive for service name matching could be helpful
+            // locators.ServicesPageLocators should ideally handle this, but here we enforce
+            // robust find
             By locator = ServicesPageLocators.getViewDetailsButtonForService(serviceName);
             System.out.println("Using locator: " + locator.toString());
 
@@ -139,6 +153,12 @@ public class ServicesPage {
                 List<WebElement> allCards = driver.findElements(By.xpath("//div[contains(@class, 'card')]"));
                 System.out.println("Found " + allCards.size() + " cards on page");
 
+                // Debug available cards
+                for (WebElement c : allCards) {
+                    System.out.println("DEBUG Card Text: "
+                            + c.getText().replace("\n", " ").substring(0, Math.min(50, c.getText().length())) + "...");
+                }
+
                 for (WebElement card : allCards) {
                     String cardText = card.getText();
                     if (cardText.toLowerCase().contains(serviceName.toLowerCase())) {
@@ -146,8 +166,12 @@ public class ServicesPage {
                                 + cardText.substring(0, Math.min(100, cardText.length())));
                         List<WebElement> buttons = card.findElements(By.tagName("button"));
                         for (WebElement btn : buttons) {
-                            if (btn.getText().toLowerCase().contains("view")) {
+                            if (btn.getText().toLowerCase().contains("view")
+                                    || btn.getText().toLowerCase().contains("details")) {
                                 System.out.println("Clicking button with JS: " + btn.getText());
+                                // Scroll and click
+                                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", btn);
+                                Thread.sleep(200);
                                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
                                 return;
                             }

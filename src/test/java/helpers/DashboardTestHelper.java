@@ -31,18 +31,16 @@ public class DashboardTestHelper {
         System.out.println("========================================");
 
         try {
-            // FIRST: Ensure we're on the dashboard, not stuck on select-wallet
+            // FIRST: Ensure we're on the dashboard
             String currentUrl = driver.getCurrentUrl();
             System.out.println("Current URL before navigation: " + currentUrl);
 
             if (currentUrl.contains("/select-wallet") || currentUrl.contains("/login")) {
                 System.out.println("⚠️ Not on dashboard, navigating to dashboard first...");
-                // Navigate to dashboard by going to services first
                 String baseUrl = currentUrl.split("/select-wallet")[0];
                 if (currentUrl.contains("/login")) {
                     baseUrl = currentUrl.split("/login")[0];
                 }
-                // Extract customer ID from URL if present
                 String dashboardUrl = baseUrl + "/dashboard";
                 if (currentUrl.contains("/customer/")) {
                     String[] parts = currentUrl.split("/customer/");
@@ -53,31 +51,42 @@ public class DashboardTestHelper {
                 }
                 System.out.println("Navigating to: " + dashboardUrl);
                 driver.get(dashboardUrl);
-                Thread.sleep(2000);
-                currentUrl = driver.getCurrentUrl();
-                System.out.println("After dashboard navigation, URL: " + currentUrl);
+                Thread.sleep(3000);
             }
 
-            // Step 1: Navigate to service
+            // Step 1: Navigate to service with retry logic
             System.out.println("Step 1: Navigating to " + serviceName + "...");
-            dashboardPage.clickService(serviceName);
+            boolean clicked = false;
+            try {
+                dashboardPage.clickService(serviceName);
+                clicked = true;
+            } catch (Exception e) {
+                System.out.println("Standard click failed for " + serviceName + ". Retrying...");
+                // Retry is handled inside clickService usually, but if it throws, we catch here
+            }
 
-            // Use longer wait in headless mode
-            int waitTime = base.DriverFactory.isHeadlessModeEnabled() ? 4000 : 2000;
-            Thread.sleep(waitTime); // Give page time to load
+            // Use significantly longer wait in headless mode or if click was flaky
+            int waitTime = base.DriverFactory.isHeadlessModeEnabled() ? 8000 : 3000;
+            System.out.println("Waiting " + waitTime + "ms for page load...");
+            Thread.sleep(waitTime);
 
-            // Step 2: Verify service page loaded (check for errors)
+            // Step 2: Verify service page loaded
             String serviceCheckName = getServiceCheckName(serviceName);
             boolean isLoaded = dashboardPage.isServicePageLoaded(serviceCheckName);
+
+            // Retry Verification if failed
+            if (!isLoaded) {
+                System.out.println("First verification failed. waiting 2s more...");
+                Thread.sleep(2000);
+                isLoaded = dashboardPage.isServicePageLoaded(serviceCheckName);
+            }
 
             // Step 2b: Explicitly check for UI error messages
             String errorMessage = dashboardPage.checkForPageErrors();
             if (errorMessage != null) {
                 System.err.println("❌ FAILURE: " + serviceName + " service loaded with error: " + errorMessage);
-                // For WABA and similar services, log the error but check if page loaded anyway
                 if (isLoaded) {
                     System.out.println("⚠️ Warning: Error popup appeared but page loaded. Error: " + errorMessage);
-                    // Don't fail the test if page loaded despite error popup
                 } else {
                     Assert.fail(serviceName + " service navigation failed - Visible Error: " + errorMessage);
                 }

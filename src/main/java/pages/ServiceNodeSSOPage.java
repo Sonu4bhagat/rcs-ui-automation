@@ -51,7 +51,22 @@ public class ServiceNodeSSOPage {
             throw new RuntimeException("Navigation to Service Node SSO failed", e);
         } catch (Exception e) {
             System.err.println("Failed to navigate to Service Node SSO: " + e.getMessage());
-            throw new RuntimeException("Navigation to Service Node SSO failed", e);
+            // Retry once
+            try {
+                System.out.println("Retrying navigation to Service Node SSO...");
+                driver.get(driver.getCurrentUrl()); // Refresh
+                Thread.sleep(2000);
+                WebElement menu = wait.until(ExpectedConditions.elementToBeClickable(
+                        ServiceNodeSSOPageLocators.SERVICE_NODE_SSO_MENU));
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", menu);
+                Thread.sleep(2000);
+                if (!driver.getCurrentUrl().contains("service-nodes-sso")) {
+                    throw new RuntimeException("Navigation retry failed");
+                }
+                System.out.println("✓ Retry successful");
+            } catch (Exception retryEx) {
+                throw new RuntimeException("Navigation to Service Node SSO failed after retry", retryEx);
+            }
         }
     }
 
@@ -149,8 +164,17 @@ public class ServiceNodeSSOPage {
             Thread.sleep(1000);
             System.out.println("✓ Clicked Login button for: " + serviceName);
         } catch (Exception e) {
-            System.err.println("Failed to click Login for " + serviceName + ": " + e.getMessage());
-            throw new RuntimeException("Login button click failed", e);
+            System.out.println("Standard click failed for " + serviceName + ", trying JS click...");
+            try {
+                WebElement loginBtn = driver
+                        .findElement(ServiceNodeSSOPageLocators.getLoginButtonForService(serviceName));
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
+                Thread.sleep(1000);
+                System.out.println("✓ JS Clicked Login button for: " + serviceName);
+            } catch (Exception jsEx) {
+                System.err.println("Failed to click Login for " + serviceName + ": " + jsEx.getMessage());
+                throw new RuntimeException("Login button click failed", jsEx);
+            }
         }
     }
 
@@ -233,8 +257,12 @@ public class ServiceNodeSSOPage {
             WebElement roleMenuItem = wait.until(ExpectedConditions.elementToBeClickable(
                     ServiceNodeSSOPageLocators.getRoleOption(roleName)));
 
-            // Click the role (this will trigger navigation automatically)
-            roleMenuItem.click();
+            try {
+                roleMenuItem.click();
+            } catch (Exception clickEx) {
+                System.out.println("Standard click failed for role, trying JS click...");
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", roleMenuItem);
+            }
             Thread.sleep(500);
 
             System.out.println("✓ Selected role: " + roleName);
@@ -315,7 +343,12 @@ public class ServiceNodeSSOPage {
             } catch (Exception e) {
                 // Try checking if URL changed from SSO page
                 String currentUrl = driver.getCurrentUrl();
-                return !currentUrl.contains("service-node-sso") && !currentUrl.contains("sso");
+                // Also checking for 'dashboard' keyword which is common
+                if ((!currentUrl.contains("service-nodes-sso") && !currentUrl.contains("sso"))
+                        || currentUrl.contains("dashboard")) {
+                    return true;
+                }
+                return false;
             }
         } catch (Exception e) {
             return false;

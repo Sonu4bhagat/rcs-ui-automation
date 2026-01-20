@@ -99,8 +99,22 @@ public class SSOTestHelper {
 
                             // Navigate back if needed
                             if (!ssoPage.getCurrentURL().contains("service-nodes-sso")) {
-                                ssoPage.navigateBackToSSO();
-                                Thread.sleep(1500);
+                                boolean backNavigated = false;
+                                for (int retry = 0; retry < 3; retry++) {
+                                    try {
+                                        ssoPage.navigateBackToSSO();
+                                        Thread.sleep(1500);
+                                        if (ssoPage.getCurrentURL().contains("service-nodes-sso")) {
+                                            backNavigated = true;
+                                            break;
+                                        }
+                                    } catch (Exception ex) {
+                                        System.out.println("Back navigation retry " + (retry + 1) + " failed");
+                                    }
+                                }
+                                if (!backNavigated) {
+                                    throw new RuntimeException("Failed to navigate back to SSO page after retries");
+                                }
                             }
 
                             ssoPage.clickLoginForService(serviceName);
