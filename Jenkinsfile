@@ -20,7 +20,10 @@ pipeline {
                 // Enable headless mode for CI/CD execution
                 // Using catchError to continue even if tests fail
                 catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    bat 'mvn clean test -Dbrowser.headless=true'
+                    // Reduce threads for stability and increase heap size
+                    withEnv(['MAVEN_OPTS=-Xmx2048m -Xms512m']) {
+                        bat 'mvn clean test -Dbrowser.headless=true -Ddataproviderthreadcount=2 -Dtestng.threadcount=2'
+                    }
                 }
             }
         }

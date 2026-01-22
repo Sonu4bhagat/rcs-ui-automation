@@ -37,7 +37,29 @@ public class BaseTest {
         test = ExtentReportManager.createTest(method.getName());
         ExtentReportManager.resetStepCounter(); // Reset step counter for each new test
 
-        // Robust Session Check
+        // Robust Session Check & Self-Healing
+        try {
+            if (driver == null) {
+                System.out.println("WARN: Driver is null. Re-initializing for test: " + method.getName());
+                DriverFactory.initializeDriver();
+                driver = DriverFactory.getDriver();
+                driver.get(ConfigReader.get("url"));
+            } else {
+                // Check if session is alive
+                String currentUrl = driver.getCurrentUrl();
+            }
+        } catch (Exception e) {
+            System.err.println(
+                    "CRITICAL: Driver session lost/crashed for test " + method.getName() + ". Restarting driver...");
+            try {
+                DriverFactory.quitDriver();
+            } catch (Exception ex) {
+                /* Ignore cleanup errors */ }
+            DriverFactory.initializeDriver();
+            driver = DriverFactory.getDriver();
+            driver.get(ConfigReader.get("url"));
+        }
+
         if (driver != null) {
             String currentUrl = driver.getCurrentUrl();
             String targetUrl = ConfigReader.get("url"); // Login URL

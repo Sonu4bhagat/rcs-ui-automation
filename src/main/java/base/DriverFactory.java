@@ -33,11 +33,15 @@ public class DriverFactory {
             options.addArguments("--disable-gpu");
             options.addArguments("--window-size=1920,1080");
             options.addArguments("--no-sandbox");
-            options.addArguments("--disable-dev-shm-usage");
-            // Additional options for headless form interaction
-            options.addArguments("--disable-extensions");
-            options.addArguments("--disable-popup-blocking");
             options.addArguments("--disable-notifications");
+            options.addArguments("--ignore-certificate-errors");
+            options.addArguments("--remote-allow-origins=*");
+
+            // Stability & Performance options for CI/CD
+            options.addArguments("--disable-dev-shm-usage"); // Overcome limited resource problems
+            options.addArguments("--disable-features=VizDisplayCompositor"); // Disable compositor for stability
+            options.addArguments("--dns-prefetch-disable");
+            options.addArguments("--disable-gpu");
             options.addArguments("--ignore-certificate-errors");
             options.addArguments("--remote-allow-origins=*");
             // User agent to avoid bot detection
