@@ -22,6 +22,10 @@ public class ServicesPageLocators {
                                         "//input[@type='text' or @type='search'] | " +
                                         "//div[contains(@class, 'search')]//input");
 
+        // Loaders/Spinners
+        public static final By LOADING_SPINNER = By
+                        .xpath("//div[contains(@class, 'spinner')] | //mat-spinner | //*[contains(text(), 'Loading')]");
+
         // Filters - flexible locators for various filter UI patterns
         public static final By FILTER_BUTTON = By
                         .xpath("//button[contains(., 'Filter') or .//mat-icon[text()='filter_list']]");

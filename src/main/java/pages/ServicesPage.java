@@ -22,6 +22,19 @@ public class ServicesPage {
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
     }
 
+    // Helper to wait for loading spinner to disappear
+    private void waitForLoadingSpinner() {
+        try {
+            // Short wait for spinner to appear
+            WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(2));
+            shortWait.until(ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.LOADING_SPINNER));
+            // If appeared, wait for it to disappear
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(ServicesPageLocators.LOADING_SPINNER));
+        } catch (Exception e) {
+            // Spinner didn't appear or disappeared quickly - ignore
+        }
+    }
+
     public void clickServicesTab() {
         System.out.println("Clicking on Services Tab...");
         System.out.println("Current URL before: " + driver.getCurrentUrl());
@@ -60,6 +73,8 @@ public class ServicesPage {
 
         System.out.println("Clicked on Services Tab.");
 
+        System.out.println("Clicked on Services Tab.");
+
         // Wait for URL to contain 'services' or for Services page header to appear
         try {
             // Wait for URL change first
@@ -70,24 +85,21 @@ public class ServicesPage {
                     ExpectedConditions.presenceOfElementLocated(ServicesPageLocators.PAGE_HEADER)));
             System.out.println("Current URL after: " + driver.getCurrentUrl());
 
-            // Additional wait for page content to fully load
-            Thread.sleep(2000);
+            // Wait for spinner (important for Jenkins)
+            waitForLoadingSpinner();
 
             // Verify we're on services page - check for service cards or page header
-            try {
-                wait.until(ExpectedConditions.or(
-                        ExpectedConditions.presenceOfElementLocated(ServicesPageLocators.PAGE_HEADER),
-                        ExpectedConditions.presenceOfElementLocated(By.xpath("//div[contains(@class, 'card')]")),
-                        ExpectedConditions.presenceOfElementLocated(By.xpath(
-                                "//*[contains(text(), 'SMS') or contains(text(), 'RCS') or contains(text(), 'WABA')]"))));
-                System.out.println("Services page loaded successfully - service cards or header found.");
-            } catch (Exception e) {
-                System.out.println("Warning: Could not verify service cards/header but continuing...");
-            }
+            wait.until(ExpectedConditions.or(
+                    ExpectedConditions.presenceOfElementLocated(ServicesPageLocators.PAGE_HEADER),
+                    ExpectedConditions.presenceOfElementLocated(By.xpath("//div[contains(@class, 'card')]")),
+                    ExpectedConditions.presenceOfElementLocated(By.xpath(
+                            "//*[contains(text(), 'SMS') or contains(text(), 'RCS') or contains(text(), 'WABA')]"))));
+            System.out.println("Services page loaded successfully - service cards or header found.");
 
         } catch (Exception e) {
-            System.out.println("Warning: URL/page validation timeout, but click was successful. Current URL: "
-                    + driver.getCurrentUrl());
+            // CRITICAL FIX: Do not swallow the exception. Fail if navigation fails.
+            System.out.println("ERROR: URL/page validation failed. Current URL: " + driver.getCurrentUrl());
+            throw new RuntimeException("Failed to navigate to Services Page. Page did not load.", e);
         }
     }
 
@@ -104,9 +116,10 @@ public class ServicesPage {
 
         // Wait for page to fully load - wait for ANY card to be visible
         try {
+            waitForLoadingSpinner(); // Ensure pending data loads
             wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//div[contains(@class, 'card')]")));
         } catch (Exception e) {
-            System.out.println("Warning: Timed out waiting for generic cards.");
+            System.out.println("Warning: Timed out waiting for generic cards. Check if services exist.");
         }
 
         // Print page source snippet for debugging (first 500 chars)
