@@ -29,28 +29,11 @@ pipeline {
             }
         }
 
-        stage('Parallel Test Execution') {
-            parallel {
-                stage('Enterprise Tests') {
-                    steps {
-                        timeout(time: 25, unit: 'MINUTES') {
-                            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                                echo 'Running Enterprise Suite...'
-                                bat 'mvn test -DsuiteXmlFile=enterprise.xml -Dbrowser.headless=true -Ddataproviderthreadcount=4 -Dtestng.threadcount=4 -Dsurefire.reportsDirectory=target/surefire-reports/enterprise'
-                            }
-                        }
-                    }
-                }
-
-                stage('SuperAdmin Tests') {
-                    steps {
-                        timeout(time: 25, unit: 'MINUTES') {
-                            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                                echo 'Running SuperAdmin Suite...'
-                                bat 'mvn test -DsuiteXmlFile=superadmin.xml -Dbrowser.headless=true -Ddataproviderthreadcount=4 -Dtestng.threadcount=4 -Dsurefire.reportsDirectory=target/surefire-reports/superadmin'
-                            }
-                        }
-                    }
+        stage('Run Full Suite (Sequential)') {
+            steps {
+                timeout(time: 90, unit: 'MINUTES') {
+                    echo 'Running all tests from testng.xml sequentially...'
+                    bat 'mvn test -DsuiteXmlFile=testng.xml -Dbrowser.headless=true'
                 }
             }
         }
@@ -78,11 +61,9 @@ pipeline {
                 def failedTestNames = []
                 
                 try {
-                    // Check multiple paths because findFiles is unavailable
+                    // Check multiple paths for safety, but focus on the main sequential path
                     def paths = [
-                        'target/surefire-reports/testng-results.xml', // Default
-                        'target/surefire-reports/enterprise/testng-results.xml',
-                        'target/surefire-reports/superadmin/testng-results.xml'
+                        'target/surefire-reports/testng-results.xml'
                     ]
                     
                     for (path in paths) {
