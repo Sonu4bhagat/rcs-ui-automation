@@ -1,16 +1,29 @@
-pulic class Randomtimestamp{
-    public static Map<String, String> generateRandomTimeStamp(){
+import java.util.HashMap;
+import java.util.Map;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
-        int randTimeStamp = 1 +(int)(Math.random() * 11:11:11);
+public class Randomtimestamp {
 
-        int randTimeStamp = "Am" +randTimeStamp;
+    public static Map<String, String> generateRandomTimeStamp() {
+        Map<String, String> data = new HashMap<>();
 
-        data.put(randomtimeStamp, timestamp);
-        return data:
+        // Logic to generate a random timestamp
+        LocalTime time = LocalTime.of(
+                (int) (Math.random() * 24),
+                (int) (Math.random() * 60),
+                (int) (Math.random() * 60));
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+        String timestamp = time.format(formatter);
+        String randomKey = "Timestamp_" + System.currentTimeMillis();
+
+        data.put(randomKey, timestamp);
+        return data;
     }
 
-    public static void main (String[] args){
-        Map<String, String> randomData = generarandTimeStamp();
-        randomTimeStamp.forEach(key,value)-> System.out.println((key, value)-> system.out.println(key+"=" value);
+    public static void main(String[] args) {
+        Map<String, String> randomData = generateRandomTimeStamp();
+        randomData.forEach((key, value) -> System.out.println(key + " = " + value));
     }
 }
