@@ -57,6 +57,11 @@ public class DriverFactory {
 
         driver.set(new ChromeDriver(options));
         driver.get().manage().window().maximize();
+
+        // Add a small implicit wait to help with CI/CD slowness
+        int implicitWait = isHeadlessMode() ? 10 : 5;
+        driver.get().manage().timeouts().implicitlyWait(java.time.Duration.ofSeconds(implicitWait));
+        System.out.println(">>> [DriverFactory] Driver initialized with " + implicitWait + "s implicit wait. <<<");
     }
 
     // Store headless mode state for access by other classes

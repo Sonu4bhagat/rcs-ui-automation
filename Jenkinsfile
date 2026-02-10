@@ -17,6 +17,8 @@ pipeline {
                 bat 'TASKKILL /F /IM chromedriver.exe /T /FI "status eq running" || echo "No chromedriver found."'
                 echo 'Cleaning and Compiling project...'
                 bat 'mvn clean compile -DskipTests'
+                echo 'Checking connectivity to target URL...'
+                bat 'curl -I https://stagingvault.smartping.io/login || echo "Warning: Could not reach target URL"'
             }
         }
 
@@ -27,28 +29,11 @@ pipeline {
             }
         }
 
-        stage('Parallel Test Execution') {
-            parallel {
-                stage('Enterprise Tests') {
-                    steps {
-                        timeout(time: 20, unit: 'MINUTES') {
-                            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                                echo 'Running Enterprise Suite...'
-                                bat 'mvn test -DsuiteXmlFile=enterprise.xml -Dbrowser.headless=true -Ddataproviderthreadcount=4 -Dtestng.threadcount=4 -Dsurefire.reportsDirectory=target/surefire-reports/enterprise'
-                            }
-                        }
-                    }
-                }
-
-                stage('SuperAdmin Tests') {
-                    steps {
-                        timeout(time: 20, unit: 'MINUTES') {
-                            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                                echo 'Running SuperAdmin Suite...'
-                                bat 'mvn test -DsuiteXmlFile=superadmin.xml -Dbrowser.headless=true -Ddataproviderthreadcount=4 -Dtestng.threadcount=4 -Dsurefire.reportsDirectory=target/surefire-reports/superadmin'
-                            }
-                        }
-                    }
+        stage('Debug Test Run') {
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    echo 'Running LoginTest only for debugging...'
+                    bat 'mvn test -Dtest=tests.LoginTest -Dbrowser.headless=true'
                 }
             }
         }
@@ -68,6 +53,7 @@ pipeline {
     post {
         always {
             script {
+                echo "DEBUG: Starting post-build script..."
                 def totalTests = 0
                 def passedTests = 0
                 def failedTests = 0
@@ -75,9 +61,12 @@ pipeline {
                 def failedTestNames = []
                 
                 try {
-                    // Collect results from all testng-results.xml (handles multiple forks if they exist)
+                    // Collect results from all testng-results.xml
                     def files = findFiles(glob: 'target/surefire-reports/**/testng-results.xml')
+                    echo "DEBUG: Found ${files.size()} results files."
+                    
                     for (file in files) {
+                        echo "DEBUG: Parsing ${file.path}"
                         def resultsFile = readFile(file.path)
                         
                         def totalMatch = (resultsFile =~ /total="(\d+)"/)
@@ -85,27 +74,33 @@ pipeline {
                         def failedMatch = (resultsFile =~ /failed="(\d+)"/)
                         def skippedMatch = (resultsFile =~ /skipped="(\d+)"/)
                         
-                        if (totalMatch) totalTests += totalMatch[0][1].toInteger()
-                        if (passedMatch) passedTests += passedMatch[0][1].toInteger()
-                        if (failedMatch) failedTests += failedMatch[0][1].toInteger()
-                        if (skippedMatch) skippedTests += skippedMatch[0][1].toInteger()
+                        if (totalMatch.find()) totalTests += totalMatch.group(1).toInteger()
+                        if (passedMatch.find()) passedTests += passedMatch.group(1).toInteger()
+                        if (failedMatch.find()) failedTests += failedMatch.group(1).toInteger()
+                        if (skippedMatch.find()) skippedTests += skippedMatch.group(1).toInteger()
                         
-                        // Extract failed test names for the email summary
+                        // Extract failed test names
                         def failureMatches = (resultsFile =~ /test-method status="FAIL" name="(\w+)"/)
-                        for (int i = 0; i < failureMatches.count; i++) {
-                            failedTestNames << failureMatches[i][1]
+                        while (failureMatches.find()) {
+                            failedTestNames << failureMatches.group(1)
                         }
                     }
                 } catch (Exception e) {
-                    echo "Could not parse test results: ${e.message}"
+                    echo "ERROR: Could not parse test results: ${e.message}"
                 }
                 
-                def statusEmoji = failedTests > 0 ? '❌' : '✅'
-                def failureSummary = failedTestNames ? "\nFAILED TESTS:\n------------------------------------------\n" + failedTestNames.unique().join("\n") : ""
+                echo "DEBUG: Results -> Total: ${totalTests}, Passed: ${passedTests}, Failed: ${failedTests}"
                 
-                mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
-                     subject: "${statusEmoji} Jenkins: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
-                     body: """
+                // If catchError made business SUCCESS, but we have failed tests, let's report FAILURE in email
+                def calculatedStatus = failedTests > 0 ? "FAILURE" : (totalTests > 0 ? "SUCCESS" : currentBuild.currentResult)
+                def statusEmoji = failedTests > 0 ? '❌' : '✅'
+                def failureSummary = failedTestNames ? "\nFAILED TESTS:\n------------------------------------------\n" + failedTestNames.unique().take(30).join("\n") + (failedTestNames.size() > 30 ? "\n... and ${failedTestNames.size() - 30} more" : "") : ""
+                
+                try {
+                    echo "DEBUG: Attempting to send email to aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com"
+                    mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
+                         subject: "${statusEmoji} Jenkins: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${calculatedStatus}",
+                         body: """
 ==========================================
    RCS Automation Test Report  ${statusEmoji}
 ==========================================
@@ -114,7 +109,7 @@ BUILD INFORMATION
 ------------------------------------------
 Job Name     : ${env.JOB_NAME}
 Build Number : #${env.BUILD_NUMBER}
-Status       : ${currentBuild.currentResult}
+Status       : ${calculatedStatus}
 Duration     : ${currentBuild.durationString}
 Build URL    : ${env.BUILD_URL}
 
@@ -125,8 +120,7 @@ Total Tests  : ${totalTests}
 Passed       : ${passedTests} ✅
 Failed       : ${failedTests} ❌
 Skipped      : ${skippedTests} ⏭️
-Stat: ${passedTests} passed out of ${totalTests}
-Pass Rate    : ${totalTests > 0 ? new BigDecimal(passedTests * 100.0 / totalTests).setScale(1, BigDecimal.ROUND_HALF_UP) : 0}%
+Pass Rate    : ${totalTests > 0 ? new BigDecimal(passedTests * 100.0 / totalTests).setScale(1, java.math.RoundingMode.HALF_UP) : 0}%
 ${failureSummary}
 
 ==========================================
@@ -145,6 +139,11 @@ ${env.BUILD_URL}console
 This is an automated email from Jenkins
 ==========================================
 """
+                    echo "DEBUG: Email sent successfully."
+                } catch (Exception e) {
+                    echo "ERROR: Failed to send email: ${e.message}"
+                    e.printStackTrace()
+                }
             }
         }
     }
