@@ -29,11 +29,28 @@ pipeline {
             }
         }
 
-        stage('Debug Test Run') {
-            steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    echo 'Running LoginTest only for debugging...'
-                    bat 'mvn test -Dtest=tests.LoginTest -Dbrowser.headless=true'
+        stage('Parallel Test Execution') {
+            parallel {
+                stage('Enterprise Tests') {
+                    steps {
+                        timeout(time: 25, unit: 'MINUTES') {
+                            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                                echo 'Running Enterprise Suite...'
+                                bat 'mvn test -DsuiteXmlFile=enterprise.xml -Dbrowser.headless=true -Ddataproviderthreadcount=4 -Dtestng.threadcount=4 -Dsurefire.reportsDirectory=target/surefire-reports/enterprise'
+                            }
+                        }
+                    }
+                }
+
+                stage('SuperAdmin Tests') {
+                    steps {
+                        timeout(time: 25, unit: 'MINUTES') {
+                            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                                echo 'Running SuperAdmin Suite...'
+                                bat 'mvn test -DsuiteXmlFile=superadmin.xml -Dbrowser.headless=true -Ddataproviderthreadcount=4 -Dtestng.threadcount=4 -Dsurefire.reportsDirectory=target/surefire-reports/superadmin'
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -61,30 +78,34 @@ pipeline {
                 def failedTestNames = []
                 
                 try {
-                    // Use fileExists instead of findFiles to avoid plugin dependency
-                    def resultsPath = 'target/surefire-reports/testng-results.xml'
+                    // Check multiple paths because findFiles is unavailable
+                    def paths = [
+                        'target/surefire-reports/testng-results.xml', // Default
+                        'target/surefire-reports/enterprise/testng-results.xml',
+                        'target/surefire-reports/superadmin/testng-results.xml'
+                    ]
                     
-                    if (fileExists(resultsPath)) {
-                        echo "DEBUG: Found results file at ${resultsPath}"
-                        def resultsFile = readFile(resultsPath)
-                        
-                        def totalMatch = (resultsFile =~ /total="(\d+)"/)
-                        def passedMatch = (resultsFile =~ /passed="(\d+)"/)
-                        def failedMatch = (resultsFile =~ /failed="(\d+)"/)
-                        def skippedMatch = (resultsFile =~ /skipped="(\d+)"/)
-                        
-                        if (totalMatch.find()) totalTests = totalMatch.group(1).toInteger()
-                        if (passedMatch.find()) passedTests = passedMatch.group(1).toInteger()
-                        if (failedMatch.find()) failedTests = failedMatch.group(1).toInteger()
-                        if (skippedMatch.find()) skippedTests = skippedMatch.group(1).toInteger()
-                        
-                        // Extract failed test names
-                        def failureMatches = (resultsFile =~ /test-method status="FAIL" name="(\w+)"/)
-                        while (failureMatches.find()) {
-                            failedTestNames << failureMatches.group(1)
+                    for (path in paths) {
+                        if (fileExists(path)) {
+                            echo "DEBUG: Parsing results at ${path}"
+                            def resultsFile = readFile(path)
+                            
+                            def totalMatch = (resultsFile =~ /total="(\d+)"/)
+                            def passedMatch = (resultsFile =~ /passed="(\d+)"/)
+                            def failedMatch = (resultsFile =~ /failed="(\d+)"/)
+                            def skippedMatch = (resultsFile =~ /skipped="(\d+)"/)
+                            
+                            if (totalMatch.find()) totalTests += totalMatch.group(1).toInteger()
+                            if (passedMatch.find()) passedTests += passedMatch.group(1).toInteger()
+                            if (failedMatch.find()) failedTests += failedMatch.group(1).toInteger()
+                            if (skippedMatch.find()) skippedTests += skippedMatch.group(1).toInteger()
+                            
+                            // Extract failed test names
+                            def failureMatches = (resultsFile =~ /test-method status="FAIL" name="(\w+)"/)
+                            while (failureMatches.find()) {
+                                failedTestNames << failureMatches.group(1)
+                            }
                         }
-                    } else {
-                        echo "WARNING: testng-results.xml not found in target/surefire-reports/"
                     }
                 } catch (Exception e) {
                     echo "ERROR: Could not parse test results: ${e.message}"
