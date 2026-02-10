@@ -14,8 +14,9 @@ pipeline {
         stage('Initialize') {
             steps {
                 echo 'Cleaning up environment...'
-                // Kill any orphaned chromedriver processes to prevent resource leaks
                 bat 'TASKKILL /F /IM chromedriver.exe /T /FI "status eq running" || echo "No chromedriver found."'
+                echo 'Cleaning and Compiling project...'
+                bat 'mvn clean compile -DskipTests'
             }
         }
 
@@ -33,7 +34,7 @@ pipeline {
                         timeout(time: 20, unit: 'MINUTES') {
                             catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
                                 echo 'Running Enterprise Suite...'
-                                bat 'mvn clean test -DsuiteXmlFile=enterprise.xml -Dbrowser.headless=true -Ddataproviderthreadcount=2 -Dtestng.threadcount=2'
+                                bat 'mvn test -DsuiteXmlFile=enterprise.xml -Dbrowser.headless=true -Ddataproviderthreadcount=4 -Dtestng.threadcount=4 -Dsurefire.reportsDirectory=target/surefire-reports/enterprise'
                             }
                         }
                     }
@@ -44,7 +45,7 @@ pipeline {
                         timeout(time: 20, unit: 'MINUTES') {
                             catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
                                 echo 'Running SuperAdmin Suite...'
-                                bat 'mvn clean test -DsuiteXmlFile=superadmin.xml -Dbrowser.headless=true -Ddataproviderthreadcount=2 -Dtestng.threadcount=2'
+                                bat 'mvn test -DsuiteXmlFile=superadmin.xml -Dbrowser.headless=true -Ddataproviderthreadcount=4 -Dtestng.threadcount=4 -Dsurefire.reportsDirectory=target/surefire-reports/superadmin'
                             }
                         }
                     }
@@ -75,7 +76,7 @@ pipeline {
                 
                 try {
                     // Collect results from all testng-results.xml (handles multiple forks if they exist)
-                    def files = findFiles(glob: 'target/surefire-reports/testng-results.xml')
+                    def files = findFiles(glob: 'target/surefire-reports/**/testng-results.xml')
                     for (file in files) {
                         def resultsFile = readFile(file.path)
                         
