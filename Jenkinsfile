@@ -60,7 +60,7 @@ pipeline {
                 archiveArtifacts artifacts: 'target/surefire-reports/**/*', allowEmptyArchive: true
                 
                 // Parse JUnit results for Jenkins trend charts
-                junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
+                junit testResults: 'target/surefire-reports/**/*.xml', allowEmptyResults: true
             }
         }
     }
@@ -125,7 +125,8 @@ Total Tests  : ${totalTests}
 Passed       : ${passedTests} ✅
 Failed       : ${failedTests} ❌
 Skipped      : ${skippedTests} ⏭️
-Pass Rate    : ${totalTests > 0 ? (passedTests * 100 / totalTests).setScale(1, BigDecimal.ROUND_HALF_UP) : 0}%
+Stat: ${passedTests} passed out of ${totalTests}
+Pass Rate    : ${totalTests > 0 ? new BigDecimal(passedTests * 100.0 / totalTests).setScale(1, BigDecimal.ROUND_HALF_UP) : 0}%
 ${failureSummary}
 
 ==========================================
