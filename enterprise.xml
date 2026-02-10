@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Enterprise Automation Suite" verbose="1" parallel="tests" thread-count="2">
+    <listeners>
+        <listener class-name="utils.AnnotationTransformer"/>
+    </listeners>
+    <test name="Enterprise Context Tests" preserve-order="true">
+        <classes>
+            <class name="tests.LoginTest"/>
+            <class name="tests.EnterpriseDashboardNavigationTest"/>
+            <class name="tests.EnterpriseServicesTabTest"/>
+            <class name="tests.EnterpriseAPIDocumentationTest"/>
+            <class name="tests.EnterpriseWalletTabTest"/>
+            <class name="tests.EnterpriseRolesManagementTest"/>
+            <class name="tests.EnterpriseReportsTabTest"/>
+            <class name="tests.EnterpriseRateCardTabTest"/>
+            <class name="tests.EnterpriseControlCenterTabTest"/>
+            <class name="tests.EnterpriseRCSAssistantFlowTest"/>
+        </classes>
+    </test>
+</suite>
