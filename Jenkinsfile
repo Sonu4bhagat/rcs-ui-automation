@@ -61,29 +61,30 @@ pipeline {
                 def failedTestNames = []
                 
                 try {
-                    // Collect results from all testng-results.xml
-                    def files = findFiles(glob: 'target/surefire-reports/**/testng-results.xml')
-                    echo "DEBUG: Found ${files.size()} results files."
+                    // Use fileExists instead of findFiles to avoid plugin dependency
+                    def resultsPath = 'target/surefire-reports/testng-results.xml'
                     
-                    for (file in files) {
-                        echo "DEBUG: Parsing ${file.path}"
-                        def resultsFile = readFile(file.path)
+                    if (fileExists(resultsPath)) {
+                        echo "DEBUG: Found results file at ${resultsPath}"
+                        def resultsFile = readFile(resultsPath)
                         
                         def totalMatch = (resultsFile =~ /total="(\d+)"/)
                         def passedMatch = (resultsFile =~ /passed="(\d+)"/)
                         def failedMatch = (resultsFile =~ /failed="(\d+)"/)
                         def skippedMatch = (resultsFile =~ /skipped="(\d+)"/)
                         
-                        if (totalMatch.find()) totalTests += totalMatch.group(1).toInteger()
-                        if (passedMatch.find()) passedTests += passedMatch.group(1).toInteger()
-                        if (failedMatch.find()) failedTests += failedMatch.group(1).toInteger()
-                        if (skippedMatch.find()) skippedTests += skippedMatch.group(1).toInteger()
+                        if (totalMatch.find()) totalTests = totalMatch.group(1).toInteger()
+                        if (passedMatch.find()) passedTests = passedMatch.group(1).toInteger()
+                        if (failedMatch.find()) failedTests = failedMatch.group(1).toInteger()
+                        if (skippedMatch.find()) skippedTests = skippedMatch.group(1).toInteger()
                         
                         // Extract failed test names
                         def failureMatches = (resultsFile =~ /test-method status="FAIL" name="(\w+)"/)
                         while (failureMatches.find()) {
                             failedTestNames << failureMatches.group(1)
                         }
+                    } else {
+                        echo "WARNING: testng-results.xml not found in target/surefire-reports/"
                     }
                 } catch (Exception e) {
                     echo "ERROR: Could not parse test results: ${e.message}"
