@@ -92,11 +92,16 @@ pipeline {
                 
                 echo "DEBUG: Results -> Total: ${totalTests}, Passed: ${passedTests}, Failed: ${failedTests}"
                 
-                // If catchError made business SUCCESS, but we have failed tests, let's report FAILURE in email
                 def calculatedStatus = failedTests > 0 ? "FAILURE" : (totalTests > 0 ? "SUCCESS" : currentBuild.currentResult)
                 def statusEmoji = failedTests > 0 ? '❌' : '✅'
                 def failureSummary = failedTestNames ? "\nFAILED TESTS:\n------------------------------------------\n" + failedTestNames.unique().take(30).join("\n") + (failedTestNames.size() > 30 ? "\n... and ${failedTestNames.size() - 30} more" : "") : ""
                 
+                // Simple pass rate calculation for sandbox compatibility
+                def passRate = 0
+                if (totalTests > 0) {
+                    passRate = (passedTests * 100) / totalTests
+                }
+
                 try {
                     echo "DEBUG: Attempting to send email to aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com"
                     mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
@@ -121,7 +126,7 @@ Total Tests  : ${totalTests}
 Passed       : ${passedTests} ✅
 Failed       : ${failedTests} ❌
 Skipped      : ${skippedTests} ⏭️
-Pass Rate    : ${totalTests > 0 ? new BigDecimal(passedTests * 100.0 / totalTests).setScale(1, java.math.RoundingMode.HALF_UP) : 0}%
+Pass Rate    : ${passRate}%
 ${failureSummary}
 
 ==========================================
@@ -143,7 +148,6 @@ This is an automated email from Jenkins
                     echo "DEBUG: Email sent successfully."
                 } catch (Exception e) {
                     echo "ERROR: Failed to send email: ${e.message}"
-                    e.printStackTrace()
                 }
             }
         }
