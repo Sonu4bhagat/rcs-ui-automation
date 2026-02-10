@@ -5,6 +5,8 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import utils.ConfigReader;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DriverFactory {
 
@@ -19,6 +21,9 @@ public class DriverFactory {
      * 3. Default: false (GUI mode for manual testing)
      */
     public static void initializeDriver() {
+        // Suppress Selenium CDP Warnings
+        Logger.getLogger("org.openqa.selenium").setLevel(Level.SEVERE);
+
         WebDriverManager.chromedriver().setup();
 
         ChromeOptions options = new ChromeOptions();
@@ -38,18 +43,16 @@ public class DriverFactory {
             options.addArguments("--remote-allow-origins=*");
 
             // Stability & Performance options for CI/CD
-            options.addArguments("--disable-dev-shm-usage"); // Overcome limited resource problems
-            options.addArguments("--disable-features=VizDisplayCompositor"); // Disable compositor for stability
+            options.addArguments("--disable-dev-shm-usage");
+            options.addArguments("--disable-features=VizDisplayCompositor");
             options.addArguments("--dns-prefetch-disable");
-            options.addArguments("--disable-gpu");
-            options.addArguments("--ignore-certificate-errors");
-            options.addArguments("--remote-allow-origins=*");
-            // User agent to avoid bot detection
+            options.addArguments("--silent");
+            options.addArguments("--log-level=3");
             options.addArguments(
-                    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-            System.out.println("[DriverFactory] Running in HEADLESS mode (CI/CD)");
+                    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
+            System.out.println(">>> [DriverFactory] INITIALIZING IN HEADLESS MODE (Chrome 144) <<<");
         } else {
-            System.out.println("[DriverFactory] Running in GUI mode");
+            System.out.println(">>> [DriverFactory] INITIALIZING IN GUI MODE (Chrome 144) <<<");
         }
 
         driver.set(new ChromeDriver(options));

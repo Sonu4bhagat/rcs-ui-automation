@@ -101,6 +101,22 @@ public class EnterpriseWalletPage {
     // ==================== Transaction List Methods ====================
 
     /**
+     * Wait for either transaction rows OR the "No Data" message to appear.
+     * This ensures the page has finished dynamic loading.
+     */
+    public void waitForTransactionData() {
+        try {
+            System.out.println("Waiting for transaction data or empty state...");
+            wait.until(ExpectedConditions.or(
+                    ExpectedConditions.visibilityOfElementLocated(EnterpriseWalletPageLocators.TRANSACTION_TABLE_ROWS),
+                    ExpectedConditions.visibilityOfElementLocated(EnterpriseWalletPageLocators.NO_DATA_MESSAGE)));
+            System.out.println("Transaction state detected.");
+        } catch (Exception e) {
+            System.out.println("Wait for transaction data timed out: " + e.getMessage());
+        }
+    }
+
+    /**
      * Check if transactions exist in the list
      */
     public boolean hasTransactions() {

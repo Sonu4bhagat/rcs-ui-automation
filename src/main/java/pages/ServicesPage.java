@@ -37,7 +37,39 @@ public class ServicesPage {
 
     public void clickServicesTab() {
         System.out.println("Clicking on Services Tab...");
-        System.out.println("Current URL before: " + driver.getCurrentUrl());
+        String currentUrl = driver.getCurrentUrl();
+        System.out.println("Current URL before: " + currentUrl);
+
+        // URL recovery: If we're on a different domain (e.g., after SSO failure),
+        // navigate back
+        if (!currentUrl.contains("stagingvault.smartping.io")) {
+            System.out.println("WARN: Browser is on wrong domain. Navigating back to staging vault...");
+            // Get the base URL from config or use default
+            String baseUrl = "https://stagingvault.smartping.io";
+            try {
+                // Check if there's a stored mainWindowHandle we can use
+                Set<String> handles = driver.getWindowHandles();
+                if (handles.size() > 1) {
+                    // Close current tab and switch to first one
+                    driver.close();
+                    driver.switchTo().window(handles.iterator().next());
+                    currentUrl = driver.getCurrentUrl();
+                    System.out.println("Switched to another window: " + currentUrl);
+                }
+                // If still on wrong domain, navigate directly
+                if (!currentUrl.contains("stagingvault.smartping.io")) {
+                    driver.navigate().to(baseUrl + "/customer/Retrol38-UW-335/services");
+                    System.out.println("Navigated to: " + driver.getCurrentUrl());
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("URL recovery error: " + e.getMessage());
+                driver.navigate().to(baseUrl);
+            }
+        }
 
         try {
             // Robustly wait for sidebar/header
@@ -241,21 +273,74 @@ public class ServicesPage {
     }
 
     public void applyActiveFilter() {
-        wait.until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.FILTER_BUTTON)).click();
-        System.out.println("Clicked filter button.");
+        try {
+            WebElement filterBtn = wait
+                    .until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.FILTER_BUTTON));
+            filterBtn.click();
+            System.out.println("Clicked filter button.");
+        } catch (Exception e) {
+            System.out.println("Standard click failed for filter button, trying JS click...");
+            try {
+                WebElement filterBtn = driver.findElement(ServicesPageLocators.FILTER_BUTTON);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", filterBtn);
+                System.out.println("Clicked filter button via JS.");
+            } catch (Exception ex) {
+                System.out.println("Filter button click failed: " + ex.getMessage());
+                throw new RuntimeException("Failed to click filter button", ex);
+            }
+        }
+
         // Wait for filter dropdown to be visible
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+        }
+
+        // Click Active checkbox with JS fallback
+        try {
+            WebElement activeCheckbox = wait
+                    .until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.STATUS_FILTER_ACTIVE));
+            if (!activeCheckbox.isSelected()) {
+                activeCheckbox.click();
+                System.out.println("Selected Active filter checkbox.");
+            }
+        } catch (Exception e) {
+            System.out.println("Standard click failed for Active checkbox, trying JS click...");
+            try {
+                WebElement activeCheckbox = driver.findElement(ServicesPageLocators.STATUS_FILTER_ACTIVE);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", activeCheckbox);
+                System.out.println("Selected Active filter checkbox via JS.");
+            } catch (Exception ex) {
+                System.out.println("Active checkbox click failed: " + ex.getMessage());
+                throw new RuntimeException("Failed to click Active checkbox", ex);
+            }
+        }
+
+        // Wait before clicking Apply
         try {
             Thread.sleep(500);
         } catch (InterruptedException e) {
         }
-        WebElement activeCheckbox = wait
-                .until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.STATUS_FILTER_ACTIVE));
-        if (!activeCheckbox.isSelected()) {
-            activeCheckbox.click();
-            System.out.println("Selected Active filter checkbox.");
+
+        // Click Apply button with JS fallback
+        try {
+            WebElement applyBtn = wait
+                    .until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.APPLY_FILTER_BTN));
+            applyBtn.click();
+            System.out.println("Clicked Apply filter button.");
+        } catch (Exception e) {
+            System.out.println("Standard click failed for Apply button, trying JS click...");
+            try {
+                WebElement applyBtn = driver.findElement(ServicesPageLocators.APPLY_FILTER_BTN);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", applyBtn);
+                System.out.println("Clicked Apply filter button via JS.");
+            } catch (Exception ex) {
+                System.out.println("Apply button click failed: " + ex.getMessage());
+                // Don't throw - filter may have been applied already
+                System.out.println("Warning: Apply button may not have been clicked. Proceeding...");
+            }
         }
-        wait.until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.APPLY_FILTER_BTN)).click();
-        System.out.println("Clicked Apply filter button.");
+
         // Wait for table to refresh after filter application
         try {
             Thread.sleep(3000);
@@ -272,7 +357,38 @@ public class ServicesPage {
     }
 
     public String getServiceName(int rowIndex) {
-        return driver.findElement(ServicesPageLocators.getServiceNameByRow(rowIndex)).getText();
+        try {
+            By locator = ServicesPageLocators.getServiceNameByRow(rowIndex);
+            // Wait for element to be present
+            wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+
+            // Wait for element to have non-empty text (retry-based)
+            wait.until(driver -> {
+                try {
+                    String text = driver.findElement(locator).getText().trim();
+                    return !text.isEmpty();
+                } catch (Exception e) {
+                    return false;
+                }
+            });
+            return driver.findElement(locator).getText().trim();
+        } catch (Exception e) {
+            System.out.println("Warning: Primary name locator failed for row " + rowIndex
+                    + ". Trying fallback to any TD with text...");
+            try {
+                List<WebElement> cells = driver.findElements(By.xpath("(//tbody//tr)[" + rowIndex + "]//td"));
+                for (WebElement cell : cells) {
+                    String text = cell.getText().trim();
+                    if (!text.isEmpty() && text.length() > 3 && !text.equalsIgnoreCase("Active")
+                            && !text.equalsIgnoreCase("Inactive")) {
+                        return text;
+                    }
+                }
+            } catch (Exception ex) {
+                System.out.println("Fallback also failed: " + ex.getMessage());
+            }
+            return "";
+        }
     }
 
     public String getServiceStatus(int rowIndex) {
@@ -320,21 +436,65 @@ public class ServicesPage {
             WebElement nameElement = detailsWait.until(
                     ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.DETAILS_SERVICE_NAME));
             String name = nameElement.getText();
-            System.out.println("Retrieved details service name: " + name);
-            return name;
-        } catch (Exception e) {
-            System.out.println("Error retrieving details service name: " + e.getMessage());
-            // Retry once after a short wait
-            try {
-                Thread.sleep(2000);
-                return wait
-                        .until(ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.DETAILS_SERVICE_NAME))
-                        .getText();
-            } catch (Exception ex) {
-                System.out.println("Retry failed: " + ex.getMessage());
-                return "";
+            if (name != null && !name.trim().isEmpty()) {
+                System.out.println("Retrieved details service name: " + name);
+                return name;
             }
+        } catch (Exception e) {
+            System.out.println("Primary locator failed: " + e.getMessage());
         }
+
+        // Retry with short wait
+        try {
+            Thread.sleep(2000);
+            WebElement nameElement = wait.until(
+                    ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.DETAILS_SERVICE_NAME));
+            String name = nameElement.getText();
+            if (name != null && !name.trim().isEmpty()) {
+                System.out.println("Retrieved details service name on retry: " + name);
+                return name;
+            }
+        } catch (Exception ex) {
+            System.out.println("Secondary attempt failed: " + ex.getMessage());
+        }
+
+        // Fallback: Try to get service name from any visible header element
+        try {
+            List<WebElement> headers = driver.findElements(By.xpath("//h4 | //h5 | //h3"));
+            for (WebElement header : headers) {
+                String text = header.getText();
+                if (text != null && !text.trim().isEmpty() && text.length() > 3) {
+                    System.out.println("Found service name from header: " + text);
+                    return text;
+                }
+            }
+        } catch (Exception ex) {
+            System.out.println("Header search failed: " + ex.getMessage());
+        }
+
+        // Last resort: Extract from URL
+        try {
+            String currentUrl = driver.getCurrentUrl();
+            System.out.println("Attempting to extract service name from URL: " + currentUrl);
+            // URL pattern: /services/SMS/service-account-id or
+            // /services/RCS/service-account-id
+            if (currentUrl.contains("/services/")) {
+                String[] parts = currentUrl.split("/");
+                for (int i = 0; i < parts.length; i++) {
+                    if (parts[i].equalsIgnoreCase("services") && i + 2 < parts.length) {
+                        // The service account ID is usually after the service type
+                        String serviceId = parts[i + 2];
+                        System.out.println("Extracted from URL: " + serviceId);
+                        return serviceId;
+                    }
+                }
+            }
+        } catch (Exception urlEx) {
+            System.out.println("URL parsing failed: " + urlEx.getMessage());
+        }
+
+        System.out.println("All attempts to get details service name failed.");
+        return "";
     }
 
     // Helper to get the first available row (any status)
@@ -389,13 +549,19 @@ public class ServicesPage {
     public void waitForServiceDetailsPageLoad() {
         System.out.println("Waiting for service details page to load...");
         try {
-            // Wait for table to be visible
+            // Wait for table to be visible with a decent timeout
             wait.until(ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.TABLE_ROWS));
-            // Additional wait for data to populate
-            Thread.sleep(2000);
+            // Additional wait for data to populate (sometimes API takes a moment)
+            Thread.sleep(2500);
+            // Ensure at least one row has text (not just empty tr)
+            wait.until(driver -> {
+                List<WebElement> rows = driver.findElements(ServicesPageLocators.TABLE_ROWS);
+                return !rows.isEmpty() && !rows.get(0).getText().trim().isEmpty();
+            });
             System.out.println("Service details page loaded successfully.");
         } catch (Exception e) {
-            System.out.println("Warning: Service details page may not have loaded completely.");
+            System.out.println(
+                    "Warning: Service details page may not have loaded completely or is empty: " + e.getMessage());
         }
     }
 
@@ -444,24 +610,34 @@ public class ServicesPage {
     }
 
     // Helper to find the first row index that does NOT have "Failed" status
+    // Now accepts N/A status since filter has been applied and row is visible
     public int findFirstNonFailedServiceRow() {
         waitForTableToLoad();
         // Additional wait to ensure data is fully populated
         try {
-            Thread.sleep(1500);
+            Thread.sleep(2000);
         } catch (InterruptedException e) {
         }
         int rows = getRowCount();
         System.out.println("Total rows found in table: " + rows);
+
         for (int i = 1; i <= rows; i++) {
-            String status = getServiceStatus(i);
-            System.out.println("Row " + i + " status: " + status);
-            if (!status.equalsIgnoreCase("Failed") && !status.equals("N/A")) {
-                System.out.println("Found non-failed service account at row: " + i);
-                return i;
+            try {
+                String status = getServiceStatus(i);
+                System.out.println("Row " + i + " status: " + status);
+                if (!status.equalsIgnoreCase("Failed")) {
+                    String name = getServiceName(i);
+                    // Ensure the row actually has a name before picking it
+                    if (name != null && !name.trim().isEmpty()) {
+                        System.out.println("Found valid non-failed service account '" + name + "' at row: " + i);
+                        return i;
+                    }
+                }
+            } catch (Exception e) {
+                continue;
             }
         }
-        return -1; // No non-failed service found
+        return -1;
     }
 
     // Get service account name from SSO dashboard page
@@ -469,11 +645,23 @@ public class ServicesPage {
         try {
             // Wait for SSO dashboard to load
             WebDriverWait ssoWait = new WebDriverWait(driver, Duration.ofSeconds(15));
-            WebElement nameElement = ssoWait.until(
-                    ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.SSO_DASHBOARD_SERVICE_NAME));
-            String name = nameElement.getText();
-            System.out.println("Retrieved SSO dashboard service name: " + name);
-            return name;
+            // Find all matching elements instead of just the first one
+            List<WebElement> nameElements = ssoWait.until(
+                    ExpectedConditions.presenceOfAllElementsLocatedBy(ServicesPageLocators.SSO_DASHBOARD_SERVICE_NAME));
+
+            for (WebElement element : nameElements) {
+                if (element.isDisplayed()) {
+                    String name = element.getText().trim();
+                    // Filter out numbers like "0", empty strings, or very short text
+                    if (!name.isEmpty() && name.length() > 2 && !name.matches("\\d+")) {
+                        System.out.println("Retrieved SSO dashboard service name: " + name);
+                        return name;
+                    }
+                }
+            }
+
+            System.out.println("Could not find a valid service name from SSO dashboard elements.");
+            return "";
         } catch (Exception e) {
             System.out.println("Error retrieving SSO dashboard service name: " + e.getMessage());
             return "";

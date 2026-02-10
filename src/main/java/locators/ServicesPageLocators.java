@@ -8,7 +8,8 @@ public class ServicesPageLocators {
         // Assuming Services is a top-level item or under Open menu
         // Based on NavigationLocators, it might be: //span[contains(text(),
         // 'Services')]
-        public static final By SERVICES_TAB = By.xpath("//span[contains(text(), 'Services')]");
+        public static final By SERVICES_TAB = By
+                        .xpath("//a[contains(@href, 'services')] | //span[normalize-space()='Services']");
 
         // Page Header
         public static final By PAGE_HEADER = By
@@ -35,7 +36,12 @@ public class ServicesPageLocators {
                                         "//input[@formcontrolname='isAccountActive' and @value='true'] | " +
                                         "//label[normalize-space()='Active']/preceding-sibling::input[1]");
         public static final By APPLY_FILTER_BTN = By
-                        .xpath("//button[contains(text(), 'Apply') or contains(text(), 'Search')]");
+                        .xpath("//button[contains(text(), 'Apply') or contains(text(), 'Search')] | " +
+                                        "//button[contains(@class, 'apply') or contains(@class, 'submit')] | " +
+                                        "//button[@type='submit'] | " +
+                                        "//div[contains(@class, 'filter')]//button[last()] | " +
+                                        "//mat-menu//button[contains(text(), 'Apply')] | " +
+                                        "//div[contains(@class, 'cdk-overlay')]//button[contains(text(), 'Apply')]");
 
         // Table Elements
         public static final By TABLE_ROWS = By.xpath("//tbody//tr");
@@ -47,11 +53,15 @@ public class ServicesPageLocators {
         }
 
         public static By getStatusBadgeByRow(int rowIndex) {
-                // Simple text-based approach - find span containing "Active" or "Inactive"
-                // Note: Text may have trailing spaces, so we use normalize-space() or partial
-                // match
+                // Only match elements containing "Active" or "Inactive" status text
+                // Avoid matching service type badges like "Promotional" or "Transactional"
                 return By.xpath("(//tbody//tr)[" + rowIndex
-                                + "]//span[contains(text(), 'Active') or contains(text(), 'Inactive')]");
+                                + "]//span[contains(text(), 'Active') or contains(text(), 'Inactive')] | " +
+                                "(//tbody//tr)[" + rowIndex
+                                + "]//*[@class='status' or contains(@class, 'status-badge')] | " +
+                                "(//tbody//tr)[" + rowIndex + "]//td[contains(@class, 'status')] | " +
+                                "(//tbody//tr)[" + rowIndex
+                                + "]//td[contains(., 'Active') or contains(., 'Inactive')]");
         }
 
         // Action Icons per Row
@@ -81,13 +91,19 @@ public class ServicesPageLocators {
                                         "//*[contains(@class, 'back-button')] | " +
                                         "//mat-icon[contains(text(), 'arrow_back')]/parent::button");
 
-        // Details View Name verification - targets breadcrumb and API header on details
-        // page
+        // Details View Name verification - targets breadcrumb, headers, and API header
+        // on details page
         public static final By DETAILS_SERVICE_NAME = By
                         .xpath("//ol[contains(@class, 'breadcrumb')]//li[contains(@class, 'active')] | " +
                                         "//nav//li[last()] | " +
                                         "//*[contains(text(), 'Service Account API Credential')] | " +
-                                        "//*[contains(text(), 'User ID:')]");
+                                        "//*[contains(text(), 'User ID:')] | " +
+                                        "//div[contains(@class, 'card-header')]//h4 | " +
+                                        "//div[contains(@class, 'card-header')]//h5 | " +
+                                        "//div[contains(@class, 'details')]//h4 | " +
+                                        "//*[@class='title' or contains(@class, 'header-title')] | " +
+                                        "//div[contains(@class, 'content')]//h4 | " +
+                                        "//div[contains(@class, 'content')]//h5");
 
         // SSO Dashboard Service Name verification - targets service name on SSO
         // dashboard

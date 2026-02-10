@@ -849,7 +849,6 @@ public class EnterpriseServicesTabTest extends BaseTest {
 
         // Click view icon
         servicesPage.clickViewIcon(nonFailedRow);
-
         // Validate details page load
         servicesPage.waitForServiceDetailsPageLoad();
 

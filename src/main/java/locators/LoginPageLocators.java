@@ -43,7 +43,12 @@ public class LoginPageLocators {
 
         // Logout
         public static final By PROFILE_MENU = By.xpath(
-                        "//div[contains(@class, 'sidenav-header')]//button[contains(@class, 'mat-mdc-menu-trigger')]");
+                        "//div[contains(@class, 'sidenav-header')]//button[contains(@class, 'mat-mdc-menu-trigger')] | "
+                                        +
+                                        "//button[contains(@class, 'mat-mdc-menu-trigger') and .//mat-icon[text()='account_circle']] | "
+                                        +
+                                        "//button[contains(@class, 'profile') or contains(@class, 'user')] | " +
+                                        "//span[contains(@class, 'user-name')]/ancestor::button");
         public static final By SIGN_OUT_BUTTON = By.xpath(
                         "//div[contains(@class, 'cdk-overlay-pane')]//button[@role='menuitem']//div[normalize-space(text())='Sign out']");
         public static final By CONFIRM_LOGOUT_BUTTON = By.xpath("//button[contains(., 'Yes, Logout')]");

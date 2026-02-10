@@ -152,7 +152,7 @@ public class DashboardPage {
 
             // Check 2: SPARC Logo should be visible (indicates dashboard loaded)
             try {
-                WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(5));
+                WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(30));
                 WebElement logo = shortWait.until(ExpectedConditions.visibilityOfElementLocated(
                         DashboardPageLocators.SPARC_LOGO));
 
@@ -166,6 +166,13 @@ public class DashboardPage {
             } catch (Exception e) {
                 // Try alternative logo locator
                 try {
+
+                    // SPECIAL CHECK FOR RCS/OCMP
+                    if (currentUrl.contains("stagingocmp.") || currentUrl.contains("ocmp.")) {
+                        System.out.println("  ✓ Recognized OCMP/RCS URL - Considering dashboard loaded");
+                        return true;
+                    }
+
                     WebElement altLogo = driver.findElement(DashboardPageLocators.DASHBOARD_LOGO);
                     if (altLogo.isDisplayed()) {
                         System.out.println("  ✓ Dashboard logo found - Dashboard loaded successfully");

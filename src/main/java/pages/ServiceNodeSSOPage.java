@@ -152,6 +152,7 @@ public class ServiceNodeSSOPage {
     public void clickLoginForService(String serviceName) {
         System.out.println("Clicking Login button for service: " + serviceName);
         try {
+            waitForLoading(); // Ensure page is settled
             WebElement loginBtn = wait.until(ExpectedConditions.elementToBeClickable(
                     ServiceNodeSSOPageLocators.getLoginButtonForService(serviceName)));
 
@@ -160,7 +161,18 @@ public class ServiceNodeSSOPage {
                     "arguments[0].scrollIntoView({block: 'center'});", loginBtn);
             Thread.sleep(500);
 
-            loginBtn.click();
+            try {
+                // Try Actions click first (better for hover effects/overlays)
+                new org.openqa.selenium.interactions.Actions(driver)
+                        .moveToElement(loginBtn)
+                        .pause(Duration.ofMillis(200))
+                        .click()
+                        .perform();
+            } catch (Exception actionEx) {
+                // Fallback to standard click
+                loginBtn.click();
+            }
+
             Thread.sleep(1000);
             System.out.println("✓ Clicked Login button for: " + serviceName);
         } catch (Exception e) {
@@ -185,8 +197,9 @@ public class ServiceNodeSSOPage {
      */
     public boolean isRoleSelectionModalDisplayed() {
         try {
-            return wait.until(ExpectedConditions.visibilityOfElementLocated(
-                    ServiceNodeSSOPageLocators.ROLE_SELECTION_MODAL)).isDisplayed();
+            wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    ServiceNodeSSOPageLocators.ROLE_SELECTION_MODAL));
+            return driver.findElement(ServiceNodeSSOPageLocators.ROLE_SELECTION_MODAL).isDisplayed();
         } catch (Exception e) {
             return false;
         }
@@ -225,12 +238,18 @@ public class ServiceNodeSSOPage {
                 // If dropdown doesn't exist, try radio buttons or list
                 List<WebElement> roleElements = driver.findElements(
                         ServiceNodeSSOPageLocators.AVAILABLE_ROLES_LIST);
+
+                // Filter for unique, visible roles
+                java.util.Set<String> uniqueRoles = new java.util.LinkedHashSet<>();
                 for (WebElement element : roleElements) {
-                    String roleText = element.getText().trim();
-                    if (!roleText.isEmpty()) {
-                        roles.add(roleText);
+                    if (element.isDisplayed()) {
+                        String roleText = element.getText().trim();
+                        if (!roleText.isEmpty()) {
+                            uniqueRoles.add(roleText);
+                        }
                     }
                 }
+                roles.addAll(uniqueRoles);
             }
 
             System.out.println("✓ Found " + roles.size() + " role(s): " + roles);
@@ -247,26 +266,82 @@ public class ServiceNodeSSOPage {
     public void selectRole(String roleName) {
         System.out.println("Selecting role: " + roleName);
         try {
-            // Wait for menu to appear
-            wait.until(ExpectedConditions.visibilityOfElementLocated(
-                    ServiceNodeSSOPageLocators.ROLE_SELECTION_MODAL));
-            Thread.sleep(500);
-
-            // For Angular Material menu, clicking the role directly navigates
-            // Find the role menu item
-            WebElement roleMenuItem = wait.until(ExpectedConditions.elementToBeClickable(
-                    ServiceNodeSSOPageLocators.getRoleOption(roleName)));
-
+            waitForLoading(); // Ensure no spinners are active
+            // Find the visible menu container first to avoid duplicates/hidden elements
+            WebElement visibleMenu = null;
             try {
-                roleMenuItem.click();
+                // Wait for any menu to appear first
+                wait.until(ExpectedConditions.visibilityOfElementLocated(
+                        ServiceNodeSSOPageLocators.ROLE_SELECTION_MODAL));
+
+                List<WebElement> menus = driver.findElements(ServiceNodeSSOPageLocators.ROLE_SELECTION_MODAL);
+                for (WebElement menu : menus) {
+                    if (menu.isDisplayed()) {
+                        visibleMenu = menu;
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("Wait for role menu timed out or failed: " + e.getMessage());
+            }
+
+            WebElement roleMenuItem = null;
+
+            if (visibleMenu != null) {
+                try {
+                    // Use relative XPath (.) to search ONLY inside the visible menu
+                    String relativeXpath = ".//button[@role='menuitem'][.//span[contains(text(), '" + roleName + "')]]";
+                    roleMenuItem = visibleMenu.findElement(By.xpath(relativeXpath));
+                    System.out.println("Found role '" + roleName + "' in visible menu");
+                } catch (Exception e) {
+                    System.out.println("Could not find role in visible menu, falling back to global search");
+                }
+            }
+
+            if (roleMenuItem == null) {
+                // Global fallback
+                By roleLocator = ServiceNodeSSOPageLocators.getRoleOption(roleName);
+                roleMenuItem = wait.until(ExpectedConditions.elementToBeClickable(roleLocator));
+
+                // Verify this element is actually visible if global search used
+                if (!roleMenuItem.isDisplayed()) {
+                    System.out.println("⚠ Found role element but it's not displayed. searching for visible one...");
+                    List<WebElement> options = driver.findElements(roleLocator);
+                    for (WebElement opt : options) {
+                        if (opt.isDisplayed()) {
+                            roleMenuItem = opt;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                // explicit wait for element found via relative path
+                wait.until(ExpectedConditions.elementToBeClickable(roleMenuItem));
+            }
+            try {
+                // Try Actions class move and click first
+                new org.openqa.selenium.interactions.Actions(driver)
+                        .moveToElement(roleMenuItem)
+                        .pause(Duration.ofMillis(200))
+                        .click()
+                        .perform();
+
+                // Verify if click worked (modal should disappear)
+                Thread.sleep(1000);
+                if (isRoleSelectionModalDisplayed()) {
+                    System.out.println("Actions click validation failed (modal still visible). Forcing JS click...");
+                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", roleMenuItem);
+                }
             } catch (Exception clickEx) {
-                System.out.println("Standard click failed for role, trying JS click...");
+                System.out.println("Standard/Actions click failed for role, trying JS click...");
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", roleMenuItem);
             }
-            Thread.sleep(500);
+            Thread.sleep(1000); // Increased wait after click
 
             System.out.println("✓ Selected role: " + roleName);
-        } catch (InterruptedException e) {
+        } catch (
+
+        InterruptedException e) {
             Thread.currentThread().interrupt();
             System.err.println("Thread interrupted: " + e.getMessage());
             throw new RuntimeException("Role selection failed", e);
@@ -336,7 +411,7 @@ public class ServiceNodeSSOPage {
 
             // Check for service dashboard elements
             try {
-                wait.withTimeout(Duration.ofSeconds(10))
+                wait.withTimeout(Duration.ofSeconds(45))
                         .until(ExpectedConditions.visibilityOfElementLocated(
                                 ServiceNodeSSOPageLocators.SERVICE_DASHBOARD));
                 return true;

@@ -198,14 +198,6 @@ public class LoginPage {
                 System.out.println("  Found wallet card: [" + cardText.replace("\n", ", ") + "] with " + serviceCount
                         + " services.");
 
-                // Prioritize the known test wallet from screenshot
-                if (cardText.contains("RETROL38")) {
-                    System.out.println("  ✓ Found target test wallet: RETROL38");
-                    bestCard = card;
-                    maxServices = 999; // Force selection
-                    break;
-                }
-
                 if (serviceCount > maxServices) {
                     maxServices = serviceCount;
                     bestCard = card;
@@ -213,7 +205,8 @@ public class LoginPage {
             }
 
             if (bestCard != null) {
-                System.out.println("Clicking selected wallet.");
+                System.out.println("Selecting wallet with maximum services (" + maxServices + "): "
+                        + bestCard.getText().split("\n")[0]);
                 // Ensure button is clickable
                 WebElement openBtn = bestCard.findElement(By.xpath(".//button[contains(text(), 'Open')]"));
                 wait.until(ExpectedConditions.elementToBeClickable(openBtn)).click();

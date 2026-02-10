@@ -53,6 +53,9 @@ public class EnterpriseWalletTabTest extends BaseTest {
     public void testTransactionListVisibility() {
         System.out.println("=== Test Case 2: Transaction List Visibility Validation ===");
 
+        // Wait for dynamic data to load
+        walletPage.waitForTransactionData();
+
         boolean hasTransactions = walletPage.hasTransactions();
         boolean noDataShown = walletPage.isNoDataMessageDisplayed();
 

@@ -45,15 +45,37 @@ public class SSOTestHelper {
         String originalWindow = driver.getWindowHandle();
 
         try {
-            // Click Login button for this service
-            System.out.println("\nStep 1: Clicking Login button for " + serviceName + "...");
-            ssoPage.clickLoginForService(serviceName);
-            Thread.sleep(2000);
+            // Retry loop for initial Login click
+            boolean modalAppeared = false;
+            boolean directRedirected = false;
 
-            // Check if role selection menu appears
-            if (ssoPage.isRoleSelectionModalDisplayed()) {
-                System.out.println("✓ Role selection menu appeared");
+            for (int attempt = 1; attempt <= 3; attempt++) {
+                if (attempt > 1) {
+                    System.out.println("⚠ Initial Login click seemed to fail (no modal/redirect). Retrying (Attempt "
+                            + attempt + ")...");
+                }
 
+                System.out.println("\nStep 1: Clicking Login button for " + serviceName + "...");
+                ssoPage.clickLoginForService(serviceName);
+                Thread.sleep(3000);
+
+                // Check if role selection menu appears
+                if (ssoPage.isRoleSelectionModalDisplayed()) {
+                    modalAppeared = true;
+                    System.out.println("✓ Role selection menu appeared");
+                    break;
+                }
+
+                // Check if it redirected directly
+                if (!ssoPage.getCurrentURL().contains("service-nodes-sso")) {
+                    directRedirected = true;
+                    break;
+                }
+
+                // If neither, loop continues to retry
+            }
+
+            if (modalAppeared) {
                 // Get all available roles
                 System.out.println("\nStep 2: Discovering available roles...");
                 List<String> roles = ssoPage.getAvailableRoles();
@@ -67,6 +89,16 @@ public class SSOTestHelper {
                 }
 
                 System.out.println("✓ Found " + roles.size() + " role(s): " + roles);
+
+                // Filter roles to run only Super Admin as per request
+                java.util.List<String> filteredRoles = new java.util.ArrayList<>();
+                for (String role : roles) {
+                    if (role.equalsIgnoreCase("Super Admin")) {
+                        filteredRoles.add(role);
+                    }
+                }
+                roles = filteredRoles;
+                System.out.println("⚠ Filtered execution: Only 'Super Admin' role will be tested");
 
                 // Test each role
                 System.out.println("\nStep 3: Testing all roles for " + serviceName + "...");
@@ -117,14 +149,39 @@ public class SSOTestHelper {
                                 }
                             }
 
-                            ssoPage.clickLoginForService(serviceName);
-                            Thread.sleep(2000);
+                            // Retry login click for subsequent iterations
+                            for (int attempt = 1; attempt <= 2; attempt++) {
+                                ssoPage.clickLoginForService(serviceName);
+                                Thread.sleep(2000);
+                                if (ssoPage.isRoleSelectionModalDisplayed())
+                                    break;
+                            }
                         }
 
-                        // Select the role (opens new window)
+                        // Select the role (opens new window) with RETRY logic
                         System.out.println("  Selecting role: " + roleName);
-                        ssoPage.selectRole(roleName);
-                        Thread.sleep(3000);
+
+                        boolean roleClickSuccess = false;
+                        for (int rRetry = 1; rRetry <= 3; rRetry++) {
+                            if (rRetry > 1)
+                                System.out.println(
+                                        "  ⚠ Role click verify failed (no window/url change). Retrying role select (Attempt "
+                                                + rRetry + ")...");
+
+                            ssoPage.selectRole(roleName);
+                            Thread.sleep(3000);
+
+                            if (driver.getWindowHandles().size() > 1
+                                    || !ssoPage.getCurrentURL().contains("service-nodes-sso")) {
+                                roleClickSuccess = true;
+                                break;
+                            }
+                        }
+
+                        if (!roleClickSuccess) {
+                            System.err.println(
+                                    "  ✗ Failed to trigger role selection action (window/url unchanged) after 3 attempts.");
+                        }
 
                         // Check for new window/tab
                         Set<String> allWindows = driver.getWindowHandles();
@@ -149,6 +206,8 @@ public class SSOTestHelper {
 
                                     // Verify dashboard loaded by checking for SPARC logo
                                     pages.DashboardPage dashboardPage = new pages.DashboardPage(driver);
+                                    System.out.println(
+                                            "  Verifying dashboard for " + serviceName + " with role " + roleName);
                                     redirectedToDashboard = dashboardPage.verifyDashboardWithRole(roleName);
 
                                     break;
@@ -211,16 +270,17 @@ public class SSOTestHelper {
 
             } else {
                 // No role selection - direct SSO
-                System.out.println("⚠ No role selection required - direct SSO");
-                Thread.sleep(3000);
-
-                boolean redirected = !ssoPage.getCurrentURL().contains("service-nodes-sso");
-
-                if (redirected) {
+                if (directRedirected) {
                     System.out.println("✓ PASS: Direct SSO successful for " + serviceName);
                 } else {
-                    System.out.println("✗ FAIL: Direct SSO failed for " + serviceName);
-                    Assert.fail("Direct SSO failed for " + serviceName);
+                    // Try waiting a bit more just in case
+                    Thread.sleep(2000);
+                    if (!ssoPage.getCurrentURL().contains("service-nodes-sso")) {
+                        System.out.println("✓ PASS: Direct SSO successful for " + serviceName);
+                    } else {
+                        System.out.println("✗ FAIL: Direct SSO failed for " + serviceName + " (URL did not change)");
+                        Assert.fail("Direct SSO failed for " + serviceName);
+                    }
                 }
 
                 // No need to navigate back as no new window
