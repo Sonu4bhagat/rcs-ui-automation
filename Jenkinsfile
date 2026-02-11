@@ -29,29 +29,26 @@ pipeline {
             }
         }
 
-        stage('Run Full Suite (Sequential)') {
+        stage('Run Full Suite (Parallel)') {
             steps {
                 timeout(time: 180, unit: 'MINUTES') {
-                    echo 'Running all tests from testng.xml sequentially...'
+                    echo 'Running all tests from testng.xml in parallel...'
                     bat 'mvn test -DsuiteXmlFile=testng.xml -Dbrowser.headless=true'
                 }
             }
         }
 
-        stage('Archive Results') {
-            steps {
-                // Archive test artifacts from all forks
-                archiveArtifacts artifacts: 'test-output/**/*', allowEmptyArchive: true
-                archiveArtifacts artifacts: 'target/surefire-reports/**/*', allowEmptyArchive: true
-                
-                // Parse JUnit results for Jenkins trend charts
-                junit testResults: 'target/surefire-reports/**/*.xml', allowEmptyResults: true
-            }
-        }
     }
 
     post {
         always {
+            // Archive test artifacts first to ensure they are available for the email
+            archiveArtifacts artifacts: 'test-output/**/*', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'target/surefire-reports/**/*', allowEmptyArchive: true
+            
+            // Parse JUnit results for Jenkins trend charts
+            junit testResults: 'target/surefire-reports/**/*.xml', allowEmptyResults: true
+
             script {
                 echo "DEBUG: Starting post-build script..."
                 def totalTests = 0
@@ -104,9 +101,10 @@ pipeline {
                     passRate = (passedTests * 100) / totalTests
                 }
 
-                try {
-                    echo "DEBUG: Attempting to send email to aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com"
-                    mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
+                def reportBaseUrl = env.BUILD_URL + "artifact/"
+                echo "DEBUG: Report Base URL is ${reportBaseUrl}"
+                
+                mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
                          subject: "${statusEmoji} Jenkins: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${calculatedStatus}",
                          body: """
 ==========================================
@@ -135,10 +133,10 @@ ${failureSummary}
              VIEW REPORTS
 ==========================================
 Extent Report (Detailed):
-${env.BUILD_URL}artifact/test-output/ExtentReport.html
+${reportBaseUrl}test-output/ExtentReport.html
 
 TestNG Index Report:
-${env.BUILD_URL}artifact/target/surefire-reports/index.html
+${reportBaseUrl}target/surefire-reports/index.html
 
 Console Output:
 ${env.BUILD_URL}console
