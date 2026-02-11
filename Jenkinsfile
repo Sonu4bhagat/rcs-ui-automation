@@ -104,7 +104,9 @@ pipeline {
                 def reportBaseUrl = env.BUILD_URL + "artifact/"
                 echo "DEBUG: Report Base URL is ${reportBaseUrl}"
                 
-                mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
+                try {
+                    echo "DEBUG: Attempting to send email to aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com"
+                    mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
                          subject: "${statusEmoji} Jenkins: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${calculatedStatus}",
                          body: """
 ==========================================
