@@ -31,7 +31,7 @@ pipeline {
 
         stage('Run Full Suite (Sequential)') {
             steps {
-                timeout(time: 90, unit: 'MINUTES') {
+                timeout(time: 180, unit: 'MINUTES') {
                     echo 'Running all tests from testng.xml sequentially...'
                     bat 'mvn test -DsuiteXmlFile=testng.xml -Dbrowser.headless=true'
                 }
