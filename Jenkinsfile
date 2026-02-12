@@ -106,7 +106,7 @@ pipeline {
                 
                 try {
                     echo "DEBUG: Attempting to send email to aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com"
-                    mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
+                    mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com, rahul.yadav@altiquence.com',
                          subject: "${statusEmoji} Jenkins: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${calculatedStatus}",
                          body: """
 ==========================================
