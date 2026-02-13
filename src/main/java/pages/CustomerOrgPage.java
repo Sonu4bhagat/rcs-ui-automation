@@ -893,6 +893,14 @@ public class CustomerOrgPage {
         try {
             System.out.println("Checking if Roles table is visible...");
             wait.until(ExpectedConditions.visibilityOfElementLocated(CustomerOrgPageLocators.ROLES_TABLE));
+
+            // Wait for any progress bar or loader to disappear
+            try {
+                wait.until(ExpectedConditions.invisibilityOfElementLocated(By.tagName("mat-progress-bar")));
+                Thread.sleep(1000); // Allow rows to finish rendering
+            } catch (Exception e) {
+            }
+
             System.out.println("✓ Roles table is visible");
             return true;
         } catch (TimeoutException e) {
@@ -914,7 +922,18 @@ public class CustomerOrgPage {
 
     public int getRolesTableRowCount() {
         try {
-            return driver.findElements(CustomerOrgPageLocators.ROLES_TABLE_ROWS).size();
+            List<WebElement> rows = driver.findElements(CustomerOrgPageLocators.ROLES_TABLE_ROWS);
+            if (rows.size() == 1) {
+                String text = rows.get(0).getText();
+                System.out.println("Single row detected. Text: '" + text + "'");
+                String lowerText = text.toLowerCase();
+                if (lowerText.contains("no data") || lowerText.contains("no roles") || lowerText.contains("no matching")
+                        || lowerText.contains("not found") || lowerText.contains("no results")) {
+                    System.out.println("Single row detected contains 'No data' text. Returning count 0.");
+                    return 0;
+                }
+            }
+            return rows.size();
         } catch (Exception e) {
             return 0;
         }
@@ -1069,26 +1088,34 @@ public class CustomerOrgPage {
             }
 
             WebElement option = wait.until(ExpectedConditions.presenceOfElementLocated(statusLocator));
+            // Ensure option is visible and clickable
+            wait.until(ExpectedConditions.elementToBeClickable(option));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", option);
-            Thread.sleep(500);
+            Thread.sleep(800); // Small wait for selection to register
 
             // Click Apply button with short timeout
-            // NOTE: Changing this to be optional, as some filters auto-apply or button
-            // might be hidden
             try {
-                WebElement applyBtn = wait.withTimeout(Duration.ofSeconds(3))
+                WebElement applyBtn = wait.withTimeout(Duration.ofSeconds(4))
                         .until(ExpectedConditions
-                                .elementToBeClickable(CustomerOrgPageLocators.ROLES_FILTER_APPLY_BUTTON));
+                                .presenceOfElementLocated(CustomerOrgPageLocators.ROLES_FILTER_APPLY_BUTTON));
+                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});",
+                        applyBtn);
+                wait.until(ExpectedConditions.elementToBeClickable(applyBtn));
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", applyBtn);
                 System.out.println("✓ Apply button clicked");
             } catch (Exception e) {
-                System.out.println("⚠ Apply button not found or clickable - assuming auto-apply");
+                System.out.println("⚠ Apply button not found or clickable - assuming auto-apply: " + e.getMessage());
             } finally {
                 // Restore timeout
                 wait.withTimeout(Duration.ofSeconds(DEFAULT_TIMEOUT));
             }
 
-            Thread.sleep(2000); // Wait for filtered results
+            // Wait for any progress bar or loader to disappear
+            try {
+                wait.until(ExpectedConditions.invisibilityOfElementLocated(By.tagName("mat-progress-bar")));
+            } catch (Exception e) {
+            }
+            Thread.sleep(2000); // Wait for filtered results to stabilize
             System.out.println("✓ Filter applied: " + status);
         } catch (Exception e) {
             System.err.println("Error applying filter: " + e.getMessage());
@@ -1127,16 +1154,23 @@ public class CustomerOrgPage {
         System.out.println("Clicking Add New Role button...");
         try {
             WebElement addNewBtn = wait
-                    .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.ROLES_ADD_NEW_BUTTON));
+                    .until(ExpectedConditions.presenceOfElementLocated(CustomerOrgPageLocators.ROLES_ADD_NEW_BUTTON));
+
+            // Clear any overlays
+            ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, 0);");
+            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", addNewBtn);
+            Thread.sleep(500);
 
             try {
-                addNewBtn.click();
+                wait.until(ExpectedConditions.elementToBeClickable(addNewBtn)).click();
             } catch (Exception e) {
                 System.out.println("Standard click failed, using JS click");
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addNewBtn);
             }
 
-            Thread.sleep(2000); // Wait for page to load
+            // Wait for navigation and ensure we're not stuck on the same page
+            wait.until(ExpectedConditions.urlContains("add"));
+            Thread.sleep(1000);
         } catch (Exception e) {
             System.err.println("Failed to click Add New Role button: " + e.getMessage());
             throw new RuntimeException("Failed to click Add New Role button", e);
@@ -1166,9 +1200,12 @@ public class CustomerOrgPage {
     public String getFirstRoleName() {
         System.out.println("Fetching first role name from table...");
         try {
-            // Role Name is in the 1st column
+            // Wait for any previous animation to finish and table to be visible
             WebElement firstRoleCell = wait.until(ExpectedConditions
                     .visibilityOfElementLocated(By.xpath("//table//tbody//tr[1]//td[position()=1]")));
+
+            // Defensive wait for text to be present if it's currently empty (Ajax delay)
+            wait.until(d -> !firstRoleCell.getText().trim().isEmpty());
             return firstRoleCell.getText().trim();
         } catch (Exception e) {
             System.out.println("Could not match first role name (Table might be empty or loading): " + e.getMessage());

@@ -38,7 +38,8 @@ public class EnterpriseRateCardPage {
     public void navigateToRateCard() {
         try {
             System.out.println("Attempting to navigate to Rate Card...");
-            Thread.sleep(1000);
+            wait.until(
+                    ExpectedConditions.visibilityOfElementLocated(EnterpriseRateCardPageLocators.RATE_CARD_MENU_ITEM));
 
             // Try to click on Rate Card menu item
             WebElement rateCardMenu = wait.until(ExpectedConditions.elementToBeClickable(
@@ -46,35 +47,18 @@ public class EnterpriseRateCardPage {
             rateCardMenu.click();
             System.out.println("Clicked Rate Card menu item");
 
-            Thread.sleep(3000);
-
-            // First check URL contains rate-card
-            String currentUrl = driver.getCurrentUrl();
-            System.out.println("Current URL after click: " + currentUrl);
-
-            if (currentUrl.contains("rate-card") || currentUrl.contains("ratecard")) {
-                System.out.println("URL validation passed - on Rate Card page");
-            } else {
-                System.out.println("Warning: URL does not contain rate-card. Waiting for elements...");
-            }
+            // Wait for URL change instead of sleeping
+            wait.until(ExpectedConditions.or(
+                    ExpectedConditions.urlContains("rate"),
+                    ExpectedConditions
+                            .visibilityOfElementLocated(EnterpriseRateCardPageLocators.RATE_CARD_PAGE_HEADER)));
 
             // Wait for rate card page elements to load
-            try {
-                wait.until(ExpectedConditions.or(
-                        ExpectedConditions
-                                .visibilityOfElementLocated(EnterpriseRateCardPageLocators.RATE_CARD_PAGE_HEADER),
-                        ExpectedConditions.visibilityOfElementLocated(EnterpriseRateCardPageLocators.RATE_CARD_TABLE),
-                        ExpectedConditions
-                                .visibilityOfElementLocated(EnterpriseRateCardPageLocators.RATE_CARD_TABLE_ROWS)));
-                System.out.println("Rate Card page elements found");
-            } catch (Exception e) {
-                System.out.println("Primary elements not found, checking for URL validation...");
-                if (currentUrl.contains("rate")) {
-                    System.out.println("URL contains 'rate' - considering page loaded");
-                } else {
-                    throw e;
-                }
-            }
+            wait.until(ExpectedConditions.or(
+                    ExpectedConditions.visibilityOfElementLocated(EnterpriseRateCardPageLocators.RATE_CARD_PAGE_HEADER),
+                    ExpectedConditions.visibilityOfElementLocated(EnterpriseRateCardPageLocators.RATE_CARD_TABLE),
+                    ExpectedConditions
+                            .visibilityOfElementLocated(EnterpriseRateCardPageLocators.RATE_CARD_TABLE_ROWS)));
 
             System.out.println("Rate Card page loaded successfully");
         } catch (Exception e) {
@@ -183,7 +167,8 @@ public class EnterpriseRateCardPage {
             WebElement nextBtn = driver.findElement(EnterpriseRateCardPageLocators.PAGINATION_NEXT);
             if (nextBtn.isEnabled() && nextBtn.isDisplayed()) {
                 nextBtn.click();
-                Thread.sleep(1000);
+                wait.until(ExpectedConditions
+                        .presenceOfElementLocated(EnterpriseRateCardPageLocators.RATE_CARD_TABLE_ROWS));
                 System.out.println("Clicked Next page");
                 return true;
             }
@@ -201,7 +186,8 @@ public class EnterpriseRateCardPage {
             WebElement prevBtn = driver.findElement(EnterpriseRateCardPageLocators.PAGINATION_PREVIOUS);
             if (prevBtn.isEnabled() && prevBtn.isDisplayed()) {
                 prevBtn.click();
-                Thread.sleep(1000);
+                wait.until(ExpectedConditions
+                        .presenceOfElementLocated(EnterpriseRateCardPageLocators.RATE_CARD_TABLE_ROWS));
                 System.out.println("Clicked Previous page");
                 return true;
             }
@@ -418,7 +404,7 @@ public class EnterpriseRateCardPage {
             By locator = EnterpriseRateCardPageLocators.getViewIconByRow(row);
             WebElement viewIcon = wait.until(ExpectedConditions.elementToBeClickable(locator));
             viewIcon.click();
-            Thread.sleep(2000);
+            wait.until(ExpectedConditions.visibilityOfElementLocated(EnterpriseRateCardPageLocators.SERVICES_SECTION));
             System.out.println("Clicked View icon for row: " + row);
         } catch (Exception e) {
             System.out.println("Error clicking View icon: " + e.getMessage());
@@ -450,7 +436,8 @@ public class EnterpriseRateCardPage {
     public List<String> getServicesOnRateCardDetails() {
         List<String> services = new ArrayList<>();
         try {
-            Thread.sleep(1000);
+            wait.until(ExpectedConditions
+                    .presenceOfAllElementsLocatedBy(EnterpriseRateCardPageLocators.SERVICE_NAMES_ON_DETAILS));
             List<WebElement> serviceElements = driver
                     .findElements(EnterpriseRateCardPageLocators.SERVICE_NAMES_ON_DETAILS);
             for (WebElement element : serviceElements) {
@@ -577,11 +564,7 @@ public class EnterpriseRateCardPage {
         } catch (Exception e) {
             System.out.println("Back button not found, using browser back: " + e.getMessage());
             driver.navigate().back();
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-            }
+            // Wait logic already improved
         }
     }
 
@@ -605,7 +588,7 @@ public class EnterpriseRateCardPage {
     public void scrollToElement(WebElement element) {
         try {
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
-            Thread.sleep(500);
+            // Scroll pause removed
         } catch (Exception e) {
             // Ignore scroll errors
         }

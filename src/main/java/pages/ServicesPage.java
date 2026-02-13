@@ -36,43 +36,31 @@ public class ServicesPage {
     }
 
     public void clickServicesTab() {
-        System.out.println("Clicking on Services Tab...");
+        System.out.println("[INFO] Clicking on Services Tab...");
         String currentUrl = driver.getCurrentUrl();
-        System.out.println("Current URL before: " + currentUrl);
 
-        // URL recovery: If we're on a different domain (e.g., after SSO failure),
-        // navigate back
+        // URL recovery
         if (!currentUrl.contains("stagingvault.smartping.io")) {
-            System.out.println("WARN: Browser is on wrong domain. Navigating back to staging vault...");
-            // Get the base URL from config or use default
+            System.out.println("[WARN] Browser is on wrong domain. Attempting recovery...");
             String baseUrl = "https://stagingvault.smartping.io";
             try {
-                // Check if there's a stored mainWindowHandle we can use
                 Set<String> handles = driver.getWindowHandles();
                 if (handles.size() > 1) {
-                    // Close current tab and switch to first one
                     driver.close();
                     driver.switchTo().window(handles.iterator().next());
                     currentUrl = driver.getCurrentUrl();
-                    System.out.println("Switched to another window: " + currentUrl);
                 }
-                // If still on wrong domain, navigate directly
                 if (!currentUrl.contains("stagingvault.smartping.io")) {
                     driver.navigate().to(baseUrl + "/customer/Retrol38-UW-335/services");
-                    System.out.println("Navigated to: " + driver.getCurrentUrl());
-                    try {
-                        Thread.sleep(2000);
-                    } catch (InterruptedException e) {
-                    }
+                    waitForLoadingSpinner();
                 }
             } catch (Exception e) {
-                System.out.println("URL recovery error: " + e.getMessage());
+                System.err.println("[ERROR] URL recovery failed: " + e.getMessage());
                 driver.navigate().to(baseUrl);
             }
         }
 
         try {
-            // Robustly wait for sidebar/header
             wait.until(ExpectedConditions.or(
                     ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.PAGE_HEADER),
                     ExpectedConditions.visibilityOfElementLocated(
@@ -82,157 +70,97 @@ public class ServicesPage {
             try {
                 servicesTab = wait.until(ExpectedConditions.elementToBeClickable(ServicesPageLocators.SERVICES_TAB));
             } catch (TimeoutException toe) {
-                // Fallback: Check presence for headless where visibility might be tricky due to
-                // window size
-                System.out.println("Services Tab not clickable/visible. Checking presence...");
+                System.out.println("[DEBUG] Services Tab not clickable/visible. Checking presence...");
                 servicesTab = wait
                         .until(ExpectedConditions.presenceOfElementLocated(ServicesPageLocators.SERVICES_TAB));
             }
 
             servicesTab.click();
         } catch (Exception e) {
-            System.out.println("Standard click failed/timed out. Trying JS Click...");
+            System.out.println("[DEBUG] Standard click fail. Trying JS click...");
             try {
                 WebElement servicesTab = driver.findElement(ServicesPageLocators.SERVICES_TAB);
                 ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", servicesTab);
                 Thread.sleep(500);
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", servicesTab);
             } catch (Exception ex) {
-                System.out.println("JS Click also failed: " + ex.getMessage());
+                System.err.println("[ERROR] JS Click also failed: " + ex.getMessage());
                 throw new RuntimeException("Failed to click Services tab", ex);
             }
         }
 
-        System.out.println("Clicked on Services Tab.");
-
-        System.out.println("Clicked on Services Tab.");
-
-        // Wait for URL to contain 'services' or for Services page header to appear
+        // Wait for URL change or header
         try {
-            // Wait for URL change first
             WebDriverWait urlWait = new WebDriverWait(driver, Duration.ofSeconds(10));
             urlWait.until(ExpectedConditions.or(
                     ExpectedConditions.urlContains("services"),
                     ExpectedConditions.urlContains("service"),
                     ExpectedConditions.presenceOfElementLocated(ServicesPageLocators.PAGE_HEADER)));
-            System.out.println("Current URL after: " + driver.getCurrentUrl());
 
-            // Wait for spinner (important for Jenkins)
             waitForLoadingSpinner();
 
-            // Verify we're on services page - check for service cards or page header
             wait.until(ExpectedConditions.or(
                     ExpectedConditions.presenceOfElementLocated(ServicesPageLocators.PAGE_HEADER),
                     ExpectedConditions.presenceOfElementLocated(By.xpath("//div[contains(@class, 'card')]")),
                     ExpectedConditions.presenceOfElementLocated(By.xpath(
                             "//*[contains(text(), 'SMS') or contains(text(), 'RCS') or contains(text(), 'WABA')]"))));
-            System.out.println("Services page loaded successfully - service cards or header found.");
+            System.out.println("[INFO] Services page loaded successfully.");
 
         } catch (Exception e) {
-            // CRITICAL FIX: Do not swallow the exception. Fail if navigation fails.
-            System.out.println("ERROR: URL/page validation failed. Current URL: " + driver.getCurrentUrl());
-            throw new RuntimeException("Failed to navigate to Services Page. Page did not load.", e);
+            System.err.println("[ERROR] Services page validation failed. URL: " + driver.getCurrentUrl());
+            throw new RuntimeException("Failed to navigate to Services Page.", e);
         }
     }
 
     // New: Navigate to specific service (SMS, RCS, etc.) from the 'Services Home'
     // cards
     public void clickServiceCardViewDetails(String serviceName) {
-        System.out.println("Looking for View Details button for service: " + serviceName);
-        System.out.println("Current URL: " + driver.getCurrentUrl());
+        System.out.println("[INFO] Navigating to service: " + serviceName);
 
-        // Remove any blocking iframes (chat widgets, etc.) in headless mode
         if (base.DriverFactory.isHeadlessModeEnabled()) {
             removeBlockingIframes();
         }
 
-        // Wait for page to fully load - wait for ANY card to be visible
         try {
-            waitForLoadingSpinner(); // Ensure pending data loads
+            waitForLoadingSpinner();
             wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//div[contains(@class, 'card')]")));
         } catch (Exception e) {
-            System.out.println("Warning: Timed out waiting for generic cards. Check if services exist.");
-        }
-
-        // Print page source snippet for debugging (first 500 chars)
-        try {
-            String pageSource = driver.getPageSource();
-            if (pageSource.toLowerCase().contains(serviceName.toLowerCase())) {
-                System.out.println("Page contains '" + serviceName + "' text - good sign!");
-            } else {
-                System.out.println("WARNING: Page does NOT contain '" + serviceName + "' text!");
-            }
-        } catch (Exception e) {
-            System.out.println("Could not check page source: " + e.getMessage());
+            System.out.println("[WARN] Timed out waiting for service cards.");
         }
 
         try {
-            // Updated to be case insensitive for service name matching could be helpful
-            // locators.ServicesPageLocators should ideally handle this, but here we enforce
-            // robust find
             By locator = ServicesPageLocators.getViewDetailsButtonForService(serviceName);
-            System.out.println("Using locator: " + locator.toString());
-
             WebElement button = wait.until(ExpectedConditions.elementToBeClickable(locator));
-            System.out.println("Found button: " + button.getText());
 
-            // Use JavaScript click in headless mode to avoid overlay issues
             if (base.DriverFactory.isHeadlessModeEnabled()) {
                 ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", button);
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                }
+                Thread.sleep(500);
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", button);
             } else {
                 button.click();
             }
-            System.out.println("Clicked View Details for service: " + serviceName);
+            System.out.println("[INFO] Clicked View Details for " + serviceName);
         } catch (Exception e) {
-            System.out.println("ERROR: Could not find/click View Details for " + serviceName);
-            System.out.println("Error details: " + e.getMessage());
-
-            // Try alternative approach: click any card button with JS
+            System.err.println("[WARN] Standard click fail for " + serviceName + ". Trying alternative...");
             try {
-                System.out.println("Trying alternative: finding any card with service name...");
                 List<WebElement> allCards = driver.findElements(By.xpath("//div[contains(@class, 'card')]"));
-                System.out.println("Found " + allCards.size() + " cards on page");
-
-                // Debug available cards
-                for (WebElement c : allCards) {
-                    System.out.println("DEBUG Card Text: "
-                            + c.getText().replace("\n", " ").substring(0, Math.min(50, c.getText().length())) + "...");
-                }
-
                 for (WebElement card : allCards) {
-                    String cardText = card.getText();
-                    if (cardText.toLowerCase().contains(serviceName.toLowerCase())) {
-                        System.out.println("Found card containing '" + serviceName + "': "
-                                + cardText.substring(0, Math.min(100, cardText.length())));
+                    if (card.getText().toLowerCase().contains(serviceName.toLowerCase())) {
                         List<WebElement> buttons = card.findElements(By.tagName("button"));
                         for (WebElement btn : buttons) {
                             if (btn.getText().toLowerCase().contains("view")
                                     || btn.getText().toLowerCase().contains("details")) {
-                                System.out.println("Clicking button with JS: " + btn.getText());
-                                // Scroll and click
                                 ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", btn);
                                 Thread.sleep(200);
                                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
                                 return;
                             }
                         }
-                        // If no View button, click the first button
-                        if (!buttons.isEmpty()) {
-                            System.out.println("Clicking first button in card with JS: " + buttons.get(0).getText());
-                            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", buttons.get(0));
-                            return;
-                        }
                     }
                 }
-                throw new RuntimeException("Could not find card for service: " + serviceName);
+                throw new RuntimeException("Could not find card for " + serviceName);
             } catch (Exception ex) {
-                System.out.println("Alternative approach also failed: " + ex.getMessage());
-                throw new RuntimeException("Failed to click View Details for " + serviceName + ": " + ex.getMessage());
+                throw new RuntimeException("Failed to click View Details for " + serviceName, ex);
             }
         }
     }
@@ -246,12 +174,10 @@ public class ServicesPage {
                     "var iframes = document.querySelectorAll('iframe[id*=\"btj\"], iframe[id*=\"chat\"], iframe[style*=\"z-index\"]');"
                             +
                             "iframes.forEach(function(iframe) {" +
-                            "  console.log('Removing blocking iframe:', iframe.id);" +
                             "  iframe.remove();" +
                             "});");
-            System.out.println("Removed blocking iframes");
+            System.out.println("[INFO] Removed blocking iframes");
         } catch (Exception e) {
-            System.out.println("Could not remove iframes: " + e.getMessage());
         }
     }
 
@@ -263,10 +189,9 @@ public class ServicesPage {
         System.out.println("Searched for: " + searchText);
         // Wait for results to update (increased wait time for search results)
         try {
-            Thread.sleep(3000);
+            waitForLoadingSpinner();
             // Wait for table to refresh
             wait.until(ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.TABLE_ROWS));
-        } catch (InterruptedException e) {
         } catch (Exception e) {
             System.out.println("Warning: Search results may not have fully loaded.");
         }
@@ -343,10 +268,9 @@ public class ServicesPage {
 
         // Wait for table to refresh after filter application
         try {
-            Thread.sleep(3000);
+            waitForLoadingSpinner();
             // Verify table is refreshed
             wait.until(ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.TABLE_ROWS));
-        } catch (InterruptedException e) {
         } catch (Exception e) {
             System.out.println("Warning: Filter may not have been fully applied.");
         }
@@ -404,12 +328,8 @@ public class ServicesPage {
         WebElement viewIcon = wait.until(
                 ExpectedConditions.elementToBeClickable(ServicesPageLocators.getViewIconByRow(rowIndex)));
         viewIcon.click();
-        System.out.println("Clicked View Icon for row " + rowIndex);
-        // Wait for details page to load
-        try {
-            Thread.sleep(1500);
-        } catch (InterruptedException e) {
-        }
+        System.out.println("[INFO] Clicked View Icon for row " + rowIndex);
+        waitForLoadingSpinner();
     }
 
     public void clickSSOIcon(int rowIndex) {
@@ -501,10 +421,7 @@ public class ServicesPage {
     public int getFirstAvailableRow() {
         waitForTableToLoad();
         // Additional wait to ensure data is fully populated
-        try {
-            Thread.sleep(1500);
-        } catch (InterruptedException e) {
-        }
+        waitForLoadingSpinner();
         int rows = getRowCount();
         System.out.println("Total rows found in table: " + rows);
         if (rows > 0) {
@@ -519,10 +436,7 @@ public class ServicesPage {
     public int findFirstActiveServiceRow() {
         waitForTableToLoad();
         // Additional wait to ensure data is fully populated
-        try {
-            Thread.sleep(1500);
-        } catch (InterruptedException e) {
-        }
+        waitForLoadingSpinner();
         int rows = getRowCount();
         System.out.println("Total rows found in table: " + rows);
         for (int i = 1; i <= rows; i++) {
@@ -547,21 +461,16 @@ public class ServicesPage {
     // Wait for service details page to fully load after navigating from service
     // card
     public void waitForServiceDetailsPageLoad() {
-        System.out.println("Waiting for service details page to load...");
         try {
-            // Wait for table to be visible with a decent timeout
             wait.until(ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.TABLE_ROWS));
-            // Additional wait for data to populate (sometimes API takes a moment)
-            Thread.sleep(2500);
-            // Ensure at least one row has text (not just empty tr)
+            waitForLoadingSpinner();
             wait.until(driver -> {
                 List<WebElement> rows = driver.findElements(ServicesPageLocators.TABLE_ROWS);
                 return !rows.isEmpty() && !rows.get(0).getText().trim().isEmpty();
             });
-            System.out.println("Service details page loaded successfully.");
+            System.out.println("[INFO] Service details page loaded.");
         } catch (Exception e) {
-            System.out.println(
-                    "Warning: Service details page may not have loaded completely or is empty: " + e.getMessage());
+            System.out.println("[WARN] Service details page load validation failed: " + e.getMessage());
         }
     }
 

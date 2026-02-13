@@ -34,7 +34,7 @@ public class EnterpriseWalletPage {
     public void navigateToWallet() {
         try {
             System.out.println("Attempting to navigate to Wallet...");
-            Thread.sleep(1000);
+            wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseWalletPageLocators.WALLET_MENU_ITEM));
 
             // Try to click on Wallet menu item
             WebElement walletMenu = wait.until(ExpectedConditions.elementToBeClickable(
@@ -42,7 +42,9 @@ public class EnterpriseWalletPage {
             walletMenu.click();
             System.out.println("Clicked Wallet menu item");
 
-            Thread.sleep(3000);
+            wait.until(ExpectedConditions.or(
+                    ExpectedConditions.urlContains("wallet"),
+                    ExpectedConditions.visibilityOfElementLocated(EnterpriseWalletPageLocators.WALLET_BALANCE)));
 
             // First check URL contains wallet-management
             String currentUrl = driver.getCurrentUrl();
@@ -207,14 +209,14 @@ public class EnterpriseWalletPage {
             WebElement dropdown = wait.until(ExpectedConditions.elementToBeClickable(
                     EnterpriseWalletPageLocators.TRANSACTION_FILTER_DROPDOWN));
             dropdown.click();
-            Thread.sleep(500);
+            // Dropdown animation pause removed
 
             // Select the option
             By optionLocator = EnterpriseWalletPageLocators.getFilterOptionByType(type);
             WebElement option = wait.until(ExpectedConditions.elementToBeClickable(optionLocator));
             option.click();
 
-            Thread.sleep(1000);
+            wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseWalletPageLocators.WALLET_MENU_ITEM));
             System.out.println("Filter applied: " + type);
         } catch (Exception e) {
             System.out.println("Error applying filter: " + e.getMessage());
@@ -230,7 +232,7 @@ public class EnterpriseWalletPage {
             WebElement clearBtn = wait.until(ExpectedConditions.elementToBeClickable(
                     EnterpriseWalletPageLocators.CLEAR_FILTER_BUTTON));
             clearBtn.click();
-            Thread.sleep(1000);
+            wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseWalletPageLocators.WALLET_MENU_ITEM));
             System.out.println("Filter cleared");
         } catch (Exception e) {
             System.out.println("Clear filter button not found or not clickable: " + e.getMessage());
@@ -285,7 +287,7 @@ public class EnterpriseWalletPage {
             WebElement nextBtn = driver.findElement(EnterpriseWalletPageLocators.PAGINATION_NEXT);
             if (nextBtn.isEnabled()) {
                 nextBtn.click();
-                Thread.sleep(1000);
+                wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseWalletPageLocators.WALLET_MENU_ITEM));
                 System.out.println("Clicked Next page");
                 return true;
             }
@@ -303,7 +305,7 @@ public class EnterpriseWalletPage {
             WebElement prevBtn = driver.findElement(EnterpriseWalletPageLocators.PAGINATION_PREVIOUS);
             if (prevBtn.isEnabled()) {
                 prevBtn.click();
-                Thread.sleep(1000);
+                wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseWalletPageLocators.WALLET_MENU_ITEM));
                 System.out.println("Clicked Previous page");
                 return true;
             }
@@ -528,7 +530,7 @@ public class EnterpriseWalletPage {
             WebElement generateBtn = wait.until(ExpectedConditions.elementToBeClickable(
                     EnterpriseWalletPageLocators.GENERATE_REPORT_BUTTON));
             generateBtn.click();
-            Thread.sleep(1000);
+            wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseWalletPageLocators.WALLET_MENU_ITEM));
             System.out.println("Clicked Generate Report button");
         } catch (Exception e) {
             System.out.println("Error clicking Generate Report: " + e.getMessage());
@@ -564,7 +566,7 @@ public class EnterpriseWalletPage {
             endInput.clear();
             endInput.sendKeys(endDate);
 
-            Thread.sleep(500);
+            // Dropdown animation pause removed
             System.out.println("Entered report values - Start: " + startDate + ", End: " + endDate);
         } catch (Exception e) {
             System.out.println("Error entering report values: " + e.getMessage());
@@ -579,7 +581,7 @@ public class EnterpriseWalletPage {
             WebElement cancelBtn = wait.until(ExpectedConditions.elementToBeClickable(
                     EnterpriseWalletPageLocators.POPUP_CANCEL_BUTTON));
             cancelBtn.click();
-            Thread.sleep(1000);
+            wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseWalletPageLocators.WALLET_MENU_ITEM));
             System.out.println("Clicked Cancel on popup");
         } catch (Exception e) {
             System.out.println("Error clicking Cancel: " + e.getMessage());
@@ -600,7 +602,7 @@ public class EnterpriseWalletPage {
                                 "//ngb-modal-window//button[contains(@class, 'close')] | " +
                                 "//button[contains(@class, 'btn-close')]"));
                 closeX.click();
-                Thread.sleep(500);
+                // Dropdown animation pause removed
                 System.out.println("Closed modal using X button");
                 return;
             } catch (Exception ex) {
@@ -610,7 +612,7 @@ public class EnterpriseWalletPage {
             // Fallback 2: Try pressing Escape key
             try {
                 driver.switchTo().activeElement().sendKeys(org.openqa.selenium.Keys.ESCAPE);
-                Thread.sleep(500);
+                // Dropdown animation pause removed
                 System.out.println("Pressed Escape to close modal");
                 // Check if modal closed
                 if (!isElementVisible(EnterpriseWalletPageLocators.GENERATE_REPORT_POPUP)) {
@@ -627,7 +629,7 @@ public class EnterpriseWalletPage {
                                 "//ngb-modal-window"));
                 ((JavascriptExecutor) driver).executeScript(
                         "arguments[0].dispatchEvent(new Event('click'));", backdrop);
-                Thread.sleep(500);
+                // Dropdown animation pause removed
                 System.out.println("Clicked modal backdrop");
             } catch (Exception ex) {
                 // Continue to next fallback
@@ -644,7 +646,7 @@ public class EnterpriseWalletPage {
                                 "    btn.click(); break;" +
                                 "  }" +
                                 "}");
-                Thread.sleep(500);
+                // Dropdown animation pause removed
                 System.out.println("Used JavaScript to close modal");
             } catch (Exception ex) {
                 System.out.println("All fallback methods failed: " + ex.getMessage());
@@ -659,7 +661,7 @@ public class EnterpriseWalletPage {
      */
     public boolean isPopupClosed() {
         try {
-            Thread.sleep(500);
+            // Dropdown animation pause removed
             return !isElementVisible(EnterpriseWalletPageLocators.GENERATE_REPORT_POPUP);
         } catch (Exception e) {
             return true;
@@ -686,7 +688,7 @@ public class EnterpriseWalletPage {
     public void scrollToElement(WebElement element) {
         try {
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
-            Thread.sleep(500);
+            // Dropdown animation pause removed
         } catch (Exception e) {
             // Ignore scroll errors
         }

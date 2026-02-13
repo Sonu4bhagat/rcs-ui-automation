@@ -66,12 +66,14 @@ public class CustomerOrgPageLocators {
         // Tab navigation - loosened to allow "Roles", "Role", "Roles (2)", "Profiles",
         // "Profile"
         public static final By ROLES_TAB = By.xpath(
-                        "//div[contains(@class,'tab') and contains(., 'Role')] | " +
-                                        "//a[contains(., 'Role')] | " +
-                                        "//button[contains(., 'Role')] | " +
-                                        "//div[contains(@class,'tab') and contains(., 'Profile')] | " +
-                                        "//a[contains(., 'Profile')] | " +
-                                        "//button[contains(., 'Profile')]");
+                        "//div[contains(@class,'tab') and (normalize-space(.)='Roles' or normalize-space(.)='Role')] | "
+                                        +
+                                        "//a[(normalize-space(.)='Roles' or normalize-space(.)='Role')] | " +
+                                        "//button[(normalize-space(.)='Roles' or normalize-space(.)='Role')] | " +
+                                        "//div[contains(@class,'tab') and (normalize-space(.)='Profiles' or normalize-space(.)='Profile')] | "
+                                        +
+                                        "//a[(normalize-space(.)='Profiles' or normalize-space(.)='Profile')] | " +
+                                        "//button[(normalize-space(.)='Profiles' or normalize-space(.)='Profile')]");
 
         // Table elements
         public static final By ROLES_TABLE = By.xpath("//table");
@@ -88,7 +90,7 @@ public class CustomerOrgPageLocators {
 
         // Filter elements - broadened to catch any filter button if ID changes
         public static final By ROLES_FILTER_BUTTON = By.xpath(
-                        "//*[@id='CampaignfiltersDropDown'] | //button[contains(., 'Filter')]");
+                        "//*[@id='CampaignfiltersDropDown'] | //*[@id='serviceAccountsDropDown'] | //button[contains(., 'Filter')]");
         public static final By ROLES_FILTER_OPTION_ALL = By.xpath("//label[contains(., 'All')]");
         public static final By ROLES_FILTER_OPTION_ACTIVE = By.xpath("//label[contains(., 'Active')]");
         public static final By ROLES_FILTER_OPTION_INACTIVE = By.xpath("//label[contains(., 'Inactive')]");
@@ -100,7 +102,7 @@ public class CustomerOrgPageLocators {
 
         // No data message
         public static final By ROLES_NO_DATA_MESSAGE = By.xpath(
-                        "//*[contains(text(), 'No data found') or contains(text(), 'No roles found') or contains(text(), 'No Data Found')]");
+                        "//*[contains(text(), 'No data found') or contains(text(), 'No roles found') or contains(text(), 'No Data Found') or contains(text(), 'No matching records found') or contains(text(), 'No Results Found')]");
 
         // Form elements - accordions for permissions
         public static final By ROLE_FORM_ACCORDIONS = By.xpath(

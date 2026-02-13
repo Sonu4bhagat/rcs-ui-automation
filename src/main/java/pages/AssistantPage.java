@@ -10,6 +10,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Page object for the Assistant Management page.
+ */
 public class AssistantPage {
 
     private WebDriver driver;
@@ -18,6 +21,11 @@ public class AssistantPage {
         this.driver = driver;
     }
 
+    /**
+     * Verifies that all assistant table headers are visible.
+     * 
+     * @return true if all headers are displayed.
+     */
     public boolean verifyAssistantHeaders() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
@@ -36,20 +44,33 @@ public class AssistantPage {
                         .isDisplayed();
     }
 
+    /**
+     * Checks if the "No Assistant" message is displayed.
+     * 
+     * @return true if the message is visible.
+     */
     public boolean isNoAssistantMessageDisplayed() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         List<WebElement> message = driver.findElements(AssistantsPageLocators.NO_ASSISTANT_MESSAGE);
         return message.size() > 0 && wait.until(ExpectedConditions.visibilityOf(message.get(0))).isDisplayed();
     }
 
+    /**
+     * Navigates to the edit assistant form from the three-dot menu.
+     */
     public void openEditAssistantForm() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
-        // wait.until(ExpectedConditions.elementToBeClickable(AssistantsPageLocators.FILTER_CLEAR)).click();
         wait.until(ExpectedConditions.elementToBeClickable(AssistantsPageLocators.THREE_DOT_MENU)).click();
         wait.until(ExpectedConditions.elementToBeClickable(AssistantsPageLocators.EDIT_BUTTON)).click();
         wait.until(ExpectedConditions.visibilityOfElementLocated(AssistantsPageLocators.EDIT_ASSISTANT_FORM));
     }
 
+    /**
+     * Updates the assistant name with a random value and proceeds to the next
+     * steps.
+     * 
+     * @return the generated random name.
+     */
     public String updateAssistantNameAndNext() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String randomName = "Test Assistant " + new Random().nextInt(1000);
@@ -64,6 +85,10 @@ public class AssistantPage {
         return randomName;
     }
 
+    /**
+     * Updates mobile and website fields and verifies their presence in the preview
+     * section.
+     */
     public void updateMobileAndWebsiteAndVerifyPreview(String randomMobile, String randomWebsite) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
@@ -87,6 +112,9 @@ public class AssistantPage {
         Assert.assertTrue(isWebsiteVisible, "Business website not visible in preview");
     }
 
+    /**
+     * Saves the updated assistant and waits for the grid to reload.
+     */
     public void saveUpdatedAssistant() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         wait.until(ExpectedConditions.elementToBeClickable(AssistantsPageLocators.UPDATE_ASSISTANT_BUTTON)).click();
@@ -94,9 +122,11 @@ public class AssistantPage {
         wait.until(ExpectedConditions.visibilityOfElementLocated(AssistantsPageLocators.FIRST_ASSISTANT_NAME));
     }
 
+    /**
+     * Waits for the grid to reflect the updated assistant name.
+     */
     public String waitForUpdatedAssistantName(String expectedName) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        // wait.until(ExpectedConditions.elementToBeClickable(AssistantsPageLocators.FILTER_CLEAR)).click();
         wait.until(ExpectedConditions.textToBePresentInElementLocated(
                 AssistantsPageLocators.FIRST_ASSISTANT_NAME, expectedName));
         return driver.findElement(AssistantsPageLocators.FIRST_ASSISTANT_NAME).getText().trim();

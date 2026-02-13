@@ -36,7 +36,6 @@ public class EnterpriseReportsPage {
     public void navigateToReports() {
         try {
             System.out.println("Attempting to navigate to Reports...");
-            Thread.sleep(1000);
 
             // Try to click on Reports menu item
             WebElement reportsMenu = wait.until(ExpectedConditions.elementToBeClickable(
@@ -44,7 +43,7 @@ public class EnterpriseReportsPage {
             reportsMenu.click();
             System.out.println("Clicked Reports menu item");
 
-            Thread.sleep(3000);
+            wait.until(ExpectedConditions.urlContains("report"));
 
             // First check URL contains reports
             String currentUrl = driver.getCurrentUrl();
@@ -90,7 +89,7 @@ public class EnterpriseReportsPage {
             WebElement viewDetailsBtn = wait.until(ExpectedConditions.elementToBeClickable(
                     EnterpriseReportsPageLocators.SMS_VIEW_DETAILS_BUTTON));
             viewDetailsBtn.click();
-            Thread.sleep(2000);
+            wait.until(ExpectedConditions.urlContains("sms"));
             System.out.println("Clicked SMS View Details button");
         } catch (Exception e) {
             System.out.println("Error clicking SMS View Details: " + e.getMessage());
@@ -103,7 +102,6 @@ public class EnterpriseReportsPage {
      */
     public boolean isSMSReportsPageLoaded() {
         try {
-            Thread.sleep(1000);
             String currentUrl = driver.getCurrentUrl();
             if (currentUrl.contains("sms") || currentUrl.contains("SMS")) {
                 return true;
@@ -126,7 +124,7 @@ public class EnterpriseReportsPage {
             By locator = EnterpriseReportsPageLocators.getViewDetailsButtonForService(serviceName);
             WebElement viewDetailsBtn = wait.until(ExpectedConditions.elementToBeClickable(locator));
             viewDetailsBtn.click();
-            Thread.sleep(2000);
+            wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseReportsPageLocators.REPORTS_TABLE));
             System.out.println("Clicked " + serviceName + " View Details button");
         } catch (Exception e) {
             System.out.println("Error clicking " + serviceName + " View Details: " + e.getMessage());
@@ -139,7 +137,6 @@ public class EnterpriseReportsPage {
      */
     public boolean isServiceReportsPageLoaded(String serviceName) {
         try {
-            Thread.sleep(1000);
             String currentUrl = driver.getCurrentUrl().toLowerCase();
             String serviceNameLower = serviceName.toLowerCase();
             if (currentUrl.contains(serviceNameLower)) {
@@ -251,7 +248,7 @@ public class EnterpriseReportsPage {
                     EnterpriseReportsPageLocators.SEARCH_INPUT));
             searchInput.clear();
             searchInput.sendKeys(searchText);
-            Thread.sleep(2000); // Wait for search results to load
+            wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseReportsPageLocators.REPORTS_TABLE_ROWS));
             System.out.println("Entered search text: " + searchText);
         } catch (Exception e) {
             System.out.println("Error entering search text: " + e.getMessage());
@@ -264,7 +261,7 @@ public class EnterpriseReportsPage {
      */
     public boolean validateSearchResults(String searchText) {
         try {
-            Thread.sleep(1000);
+            // Filter panel wait removed
             List<WebElement> firstColumnCells = driver.findElements(EnterpriseReportsPageLocators.FIRST_COLUMN_CELLS);
             if (firstColumnCells.isEmpty()) {
                 System.out.println("No results found after search");
@@ -294,7 +291,7 @@ public class EnterpriseReportsPage {
         try {
             WebElement searchInput = driver.findElement(EnterpriseReportsPageLocators.SEARCH_INPUT);
             searchInput.clear();
-            Thread.sleep(1000);
+            wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseReportsPageLocators.REPORTS_TABLE_ROWS));
             System.out.println("Search field cleared");
         } catch (Exception e) {
             System.out.println("Error clearing search: " + e.getMessage());
@@ -338,7 +335,11 @@ public class EnterpriseReportsPage {
                         filterBtn.click();
                         System.out.println("Clicked 'Filters' button - opening filter panel");
                         filterPanelOpened = true;
-                        Thread.sleep(1500); // Wait for filter panel to animate open
+                        wait.until(ExpectedConditions
+                                .visibilityOfElementLocated(By.xpath("//*[contains(@class, 'filter')]"))); // Or some
+                                                                                                           // other
+                                                                                                           // panel
+                                                                                                           // element
                         break;
                     }
                 } catch (Exception ex) {

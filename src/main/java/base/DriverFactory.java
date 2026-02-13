@@ -50,18 +50,19 @@ public class DriverFactory {
             options.addArguments("--log-level=3");
             options.addArguments(
                     "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
-            System.out.println(">>> [DriverFactory] INITIALIZING IN HEADLESS MODE (Chrome 144) <<<");
+            System.out.println("[DriverFactory] INITIALIZING IN HEADLESS MODE (Chrome 144)");
         } else {
-            System.out.println(">>> [DriverFactory] INITIALIZING IN GUI MODE (Chrome 144) <<<");
+            System.out.println("[DriverFactory] INITIALIZING IN GUI MODE (Chrome 144)");
         }
 
         driver.set(new ChromeDriver(options));
         driver.get().manage().window().maximize();
 
-        // Add a small implicit wait to help with CI/CD slowness
-        int implicitWait = isHeadlessMode() ? 10 : 5;
+        // Reduce implicit wait to avoid conflicts with explicit waits and speed up
+        // execution
+        int implicitWait = 2;
         driver.get().manage().timeouts().implicitlyWait(java.time.Duration.ofSeconds(implicitWait));
-        System.out.println(">>> [DriverFactory] Driver initialized with " + implicitWait + "s implicit wait. <<<");
+        System.out.println("[DriverFactory] Driver initialized with " + implicitWait + "s implicit wait.");
     }
 
     // Store headless mode state for access by other classes

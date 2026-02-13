@@ -40,11 +40,16 @@ public class LoginPage {
         // Use JavaScript click in headless mode to avoid click intercept issues
         if (base.DriverFactory.isHeadlessModeEnabled()) {
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
-            // Wait for form submission in headless mode only
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
-            }
+            // Wait for form submission - could go to dashboard, wallet selection, or show
+            // error
+            wait.until(ExpectedConditions.or(
+                    ExpectedConditions.urlContains("dashboard"),
+                    ExpectedConditions.urlContains("select-wallet"),
+                    ExpectedConditions.urlContains("/sa/"),
+                    ExpectedConditions.urlContains("/ep/"),
+                    ExpectedConditions.presenceOfElementLocated(LoginPageLocators.INVALID_CREDENTIALS_ALERT),
+                    ExpectedConditions.presenceOfElementLocated(LoginPageLocators.EMAIL_REQUIRED_MSG),
+                    ExpectedConditions.presenceOfElementLocated(LoginPageLocators.PASSWORD_REQUIRED_MSG)));
         } else {
             // GUI mode: normal click, no extra wait
             loginBtn.click();
@@ -58,11 +63,7 @@ public class LoginPage {
             WebElement otpField = otpFields.get(i);
             otpField.clear();
             otpField.sendKeys(String.valueOf(otp.charAt(i)));
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            // Wait logic already improved
         }
     }
 
@@ -84,16 +85,16 @@ public class LoginPage {
 
     public void handleOTP(String email, String password) {
         if (isOTPRequired()) {
-            System.out.println("OTP Field detected. Fetching OTP from email...");
+            System.out.println("[INFO] OTP Field detected. Fetching OTP from email...");
             String otp = utils.EmailReader.getOTPFromEmail(email, password);
             if (otp == null) {
-                System.out.println("Failed to fetch OTP from email. Trying default test OTP.");
+                System.out.println("[WARN] Failed to fetch OTP from email. Trying default test OTP.");
                 otp = "112233";
             }
             enterOTP(otp);
             clickVerifyButton();
         } else {
-            System.out.println("OTP Field not detected. Proceeding to Dashboard.");
+            System.out.println("[INFO] OTP Field not detected. Proceeding to Dashboard.");
         }
     }
 
@@ -121,12 +122,12 @@ public class LoginPage {
                 default:
                     return false;
             }
-            System.out.println("Dashboard loaded for role " + role + ": " + isLoaded);
+            System.out.println("[INFO] Dashboard loaded for role " + role + ": " + isLoaded);
 
             // Additional URL Validation
             String currentUrl = driver.getCurrentUrl();
             if (isLoaded && !currentUrl.contains("dashboard") && !currentUrl.contains("customer")) {
-                System.out.println("Warning: URL does not contain 'dashboard' or 'customer': " + currentUrl);
+                System.out.println("[WARN] URL does not contain 'dashboard' or 'customer': " + currentUrl);
             }
 
             return isLoaded;
@@ -163,25 +164,24 @@ public class LoginPage {
                         ExpectedConditions.urlContains("select-wallet"),
                         ExpectedConditions.urlContains("wallet")));
             } catch (TimeoutException e) {
-                System.out.println("URL did not change to 'select-wallet'. Assuming direct dashboard access.");
+                System.out.println("[INFO] URL did not change to 'select-wallet'. Assuming direct dashboard access.");
                 return;
             }
 
-            // 2. Wait for Header (Broadened locator)
+            // 2. Wait for Header
             try {
                 wait.until(ExpectedConditions.visibilityOfElementLocated(
                         By.xpath("//*[contains(text(), 'Select Wallet') or contains(text(), 'Select Account')]")));
-                System.out.println("Wallet selection screen detected.");
+                System.out.println("[INFO] Wallet selection screen detected.");
             } catch (TimeoutException e) {
-                System.out.println("Wallet header not found, but URL matches. Attempting to find cards directly...");
+                System.out.println("[DEBUG] Wallet header not found. Attempting to find cards directly...");
             }
 
-            System.out.println("Finding wallet with maximum services...");
             List<WebElement> cards = driver.findElements(LoginPageLocators.WALLET_CARD);
 
             // Retry mechanism for cards
             if (cards.isEmpty()) {
-                System.out.println("No cards found initially. Waiting 2s and retrying...");
+                System.out.println("[DEBUG] No cards found initially. Retrying...");
                 try {
                     Thread.sleep(2000);
                 } catch (Exception ex) {
@@ -193,11 +193,7 @@ public class LoginPage {
             WebElement bestCard = null;
 
             for (WebElement card : cards) {
-                String cardText = card.getText();
                 int serviceCount = card.findElements(LoginPageLocators.WALLET_SERVICE_ITEMS).size();
-                System.out.println("  Found wallet card: [" + cardText.replace("\n", ", ") + "] with " + serviceCount
-                        + " services.");
-
                 if (serviceCount > maxServices) {
                     maxServices = serviceCount;
                     bestCard = card;
@@ -205,21 +201,18 @@ public class LoginPage {
             }
 
             if (bestCard != null) {
-                System.out.println("Selecting wallet with maximum services (" + maxServices + "): "
-                        + bestCard.getText().split("\n")[0]);
-                // Ensure button is clickable
+                System.out.println("[INFO] Selecting wallet with maximum services (" + maxServices + ").");
                 WebElement openBtn = bestCard.findElement(By.xpath(".//button[contains(text(), 'Open')]"));
                 wait.until(ExpectedConditions.elementToBeClickable(openBtn)).click();
             } else {
-                System.out
-                        .println("No wallet cards found or could not determine best card. Trying default Open button.");
+                System.out.println("[WARN] Could not determine best card. Clicking default.");
                 driver.findElement(LoginPageLocators.WALLET_OPEN_BUTTON).click();
             }
 
         } catch (TimeoutException e) {
-            System.out.println("Wallet selection timed out.");
+            System.out.println("[WARN] Wallet selection timed out.");
         } catch (Exception e) {
-            System.out.println("Error identifying best wallet: " + e.getMessage() + ".  Clicking default.");
+            System.out.println("[ERROR] Error identifying best wallet: " + e.getMessage());
             try {
                 driver.findElement(LoginPageLocators.WALLET_OPEN_BUTTON).click();
             } catch (Exception ex) {
@@ -243,11 +236,11 @@ public class LoginPage {
             WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(5));
             shortWait.until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.WALLET_OPEN_BUTTON));
             ExtentReportManager.logStep("Select wallet from wallet selection screen");
-            System.out.println("Wallet selection screen detected. Opening first wallet...");
+            System.out.println("[INFO] Wallet selection screen detected. Opening first wallet...");
             driver.findElement(LoginPageLocators.WALLET_OPEN_BUTTON).click();
         } catch (TimeoutException e) {
             ExtentReportManager.logInfo("No wallet selection screen - direct dashboard access");
-            System.out.println("Wallet selection screen not found, assuming direct dashboard access.");
+            System.out.println("[INFO] Wallet selection screen not found, assuming direct dashboard access.");
         }
 
         ExtentReportManager.logStep("Verify Enterprise dashboard is loaded");
@@ -326,12 +319,9 @@ public class LoginPage {
     public void logout() {
         try {
             ExtentReportManager.logStep("Logout from application");
-            System.out.println("Attempting to logout...");
+            System.out.println("[INFO] Attempting to logout...");
 
-            // 1. Click Profile Menu
-            ExtentReportManager.logStep("Click Profile menu");
-
-            // Wait for any overlay to disappear (e.g., toast messages, spinners)
+            // Wait for any overlay to disappear
             try {
                 WebDriverWait waitShort = new WebDriverWait(driver, Duration.ofSeconds(3));
                 waitShort.until(ExpectedConditions
@@ -342,30 +332,22 @@ public class LoginPage {
 
             WebElement profileMenu;
             try {
-                // Try strictly clickable
                 profileMenu = wait.until(ExpectedConditions.elementToBeClickable(LoginPageLocators.PROFILE_MENU));
                 profileMenu.click();
             } catch (Exception e) {
-                System.out.println("Standard click on profile menu failed. Trying to locate and JS click...");
+                System.out.println("[DEBUG] Standard click fail on profile menu. Retrying with JS click...");
                 try {
-                    // Try presence if not clickable
                     profileMenu = wait
                             .until(ExpectedConditions.presenceOfElementLocated(LoginPageLocators.PROFILE_MENU));
-
-                    // Scroll to top
                     ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, 0);");
                     Thread.sleep(500);
-
                     ((JavascriptExecutor) driver).executeScript("arguments[0].click();", profileMenu);
                 } catch (Exception ex) {
-                    System.out.println("Could not even find profile menu with JS.");
                     throw ex;
                 }
             }
-            System.out.println("Clicked profile menu.");
 
-            // 2. Click Sign Out - Ensure it's visible first
-            // Often there's a delay for animation
+            // Click Sign Out
             try {
                 Thread.sleep(500);
             } catch (InterruptedException e) {
@@ -374,43 +356,29 @@ public class LoginPage {
             WebElement signOutBtn = wait
                     .until(ExpectedConditions.presenceOfElementLocated(LoginPageLocators.SIGN_OUT_BUTTON));
 
-            // Wait for visibility if possible
-            try {
-                wait.until(ExpectedConditions.visibilityOf(signOutBtn));
-            } catch (TimeoutException te) {
-                System.out.println(
-                        "Sign Out button present but not visible (headless issue?). Proceeding with JS click.");
-            }
-
-            // Retry with JS if standard click fails
             try {
                 signOutBtn.click();
             } catch (Exception e) {
-                System.out.println("Sign Out click intercepted/failed. Using JS Click...");
+                System.out.println("[DEBUG] Sign Out click fail. Using JS Click...");
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", signOutBtn);
             }
-            System.out.println("Clicked sign out button.");
 
-            // 3. Confirm Logout - Use JS click fallback in headless mode
+            // Confirm Logout
             WebElement confirmBtn = wait
                     .until(ExpectedConditions.presenceOfElementLocated(LoginPageLocators.CONFIRM_LOGOUT_BUTTON));
             try {
                 wait.until(ExpectedConditions.elementToBeClickable(confirmBtn)).click();
             } catch (Exception e) {
-                System.out.println("Confirm logout click intercepted. Using JS Click...");
+                System.out.println("[DEBUG] Confirm logout click fail. Using JS Click...");
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", confirmBtn);
             }
-            System.out.println("Clicked confirm logout.");
 
-            // 4. Verify return to login page
+            // Verify return to login page
             wait.until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.EMAIL_INPUT));
-
-            System.out.println("Logout successful. Returned to login page.");
+            System.out.println("[INFO] Logout successful.");
 
         } catch (Exception e) {
-            System.out.println("Logout failed: " + e.getMessage());
-            // Retry mechanics could be added here, but for now throwing ensures test fails
-            // explicitly
+            System.err.println("[ERROR] Logout failed: " + e.getMessage());
             throw new RuntimeException("Logout failed: " + e.getMessage());
         }
     }

@@ -43,16 +43,16 @@ public class APIAndDocumentationPage {
             WebElement apiDocMenu = wait.until(ExpectedConditions.elementToBeClickable(
                     APIAndDocumentationPageLocators.API_DOC_MENU));
 
-            // Use JavaScript click in headless mode
+            // Perform click based on mode
             if (base.DriverFactory.isHeadlessModeEnabled()) {
                 ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", apiDocMenu);
-                Thread.sleep(500);
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", apiDocMenu);
-                Thread.sleep(3000); // Longer wait for headless
             } else {
                 apiDocMenu.click();
-                Thread.sleep(1500); // Allow page to load
             }
+
+            // Wait for URL change in both modes
+            wait.until(ExpectedConditions.urlContains("api-documentation"));
             System.out.println("Successfully clicked API & Documentation menu");
         } catch (Exception e) {
             System.out.println("Error navigating to API & Documentation: " + e.getMessage());
@@ -150,7 +150,7 @@ public class APIAndDocumentationPage {
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", viewDetailsBtn);
             }
 
-            Thread.sleep(1500); // Allow modal/section to load
+            waitForLoadingToComplete();
             System.out.println("Successfully clicked View Details for " + serviceName);
         } catch (Exception e) {
             System.out.println("Error clicking View Details for " + serviceName + ": " + e.getMessage());
@@ -271,7 +271,7 @@ public class APIAndDocumentationPage {
                         APIAndDocumentationPageLocators.EXPLORE_SWAGGER_BUTTON));
             }
             swaggerBtn.click();
-            Thread.sleep(2000); // Allow new tab to open
+            wait.until(driver -> driver.getWindowHandles().size() > 1);
             System.out.println("Successfully clicked Explore Swagger UI for " + serviceName);
         } catch (Exception e) {
             System.out.println("Error clicking Swagger UI for " + serviceName + ": " + e.getMessage());
@@ -350,7 +350,7 @@ public class APIAndDocumentationPage {
 
             if (!tabs.isEmpty()) {
                 driver.switchTo().window(tabs.get(0));
-                Thread.sleep(1000);
+                waitForLoadingToComplete();
                 System.out.println("Switched back to main window");
             }
         } catch (Exception e) {
@@ -373,7 +373,7 @@ public class APIAndDocumentationPage {
         try {
             WebElement closeBtn = driver.findElement(APIAndDocumentationPageLocators.MODAL_CLOSE_BUTTON);
             closeBtn.click();
-            Thread.sleep(1000);
+            waitForLoadingToComplete();
             System.out.println("Modal closed");
         } catch (Exception e) {
             System.out.println("No modal to close or error closing: " + e.getMessage());
@@ -450,7 +450,7 @@ public class APIAndDocumentationPage {
                         .until(ExpectedConditions
                                 .elementToBeClickable(APIAndDocumentationPageLocators.BACK_TO_LIST_BUTTON));
                 backBtn.click();
-                Thread.sleep(1000);
+                waitForLoadingToComplete();
                 System.out.println("Clicked Back button to return to service list");
                 return;
             } catch (Exception e) {
@@ -496,9 +496,8 @@ public class APIAndDocumentationPage {
      * Wait for loading to complete
      */
 
-    public void waitForLoadingToComplete() throws InterruptedException {
+    public void waitForLoadingToComplete() {
         try {
-            Thread.sleep(1000);
             wait.until(ExpectedConditions.invisibilityOfElementLocated(
                     APIAndDocumentationPageLocators.LOADING_SPINNER));
             System.out.println("Loading completed");

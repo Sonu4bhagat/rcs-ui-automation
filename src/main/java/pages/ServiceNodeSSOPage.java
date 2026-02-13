@@ -34,8 +34,8 @@ public class ServiceNodeSSOPage {
                     ServiceNodeSSOPageLocators.SERVICE_NODE_SSO_MENU));
             menu.click();
 
-            // Wait for URL to change to SSO page
-            Thread.sleep(2000);
+            // Wait for URL to change to SSO page instead of sleeping
+            wait.until(ExpectedConditions.urlContains("service-nodes-sso"));
 
             // Validate navigation by URL
             String currentUrl = driver.getCurrentUrl();
@@ -43,12 +43,8 @@ public class ServiceNodeSSOPage {
                 throw new RuntimeException("Failed to navigate to SSO page. Current URL: " + currentUrl);
             }
 
-            Thread.sleep(1000);
+            waitForLoading();
             System.out.println("✓ Navigated to Service Node SSO page");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            System.err.println("Thread interrupted: " + e.getMessage());
-            throw new RuntimeException("Navigation to Service Node SSO failed", e);
         } catch (Exception e) {
             System.err.println("Failed to navigate to Service Node SSO: " + e.getMessage());
             // Retry once
@@ -76,7 +72,7 @@ public class ServiceNodeSSOPage {
     public boolean isPageLoaded() {
         try {
             // Validate by URL since the page doesn't have a visible header
-            Thread.sleep(1000);
+            waitForLoading();
             String currentUrl = driver.getCurrentUrl();
             boolean loaded = currentUrl.contains("service-nodes-sso");
 
@@ -103,7 +99,7 @@ public class ServiceNodeSSOPage {
             // Wait for services to load
             wait.until(ExpectedConditions.presenceOfElementLocated(
                     ServiceNodeSSOPageLocators.SERVICE_ROWS));
-            Thread.sleep(1000);
+            waitForLoading();
 
             List<WebElement> serviceElements = driver.findElements(
                     ServiceNodeSSOPageLocators.SERVICE_NAME_CELLS);
@@ -173,7 +169,7 @@ public class ServiceNodeSSOPage {
                 loginBtn.click();
             }
 
-            Thread.sleep(1000);
+            waitForLoading();
             System.out.println("✓ Clicked Login button for: " + serviceName);
         } catch (Exception e) {
             System.out.println("Standard click failed for " + serviceName + ", trying JS click...");
@@ -181,7 +177,7 @@ public class ServiceNodeSSOPage {
                 WebElement loginBtn = driver
                         .findElement(ServiceNodeSSOPageLocators.getLoginButtonForService(serviceName));
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
-                Thread.sleep(1000);
+                waitForLoading();
                 System.out.println("✓ JS Clicked Login button for: " + serviceName);
             } catch (Exception jsEx) {
                 System.err.println("Failed to click Login for " + serviceName + ": " + jsEx.getMessage());
@@ -216,7 +212,7 @@ public class ServiceNodeSSOPage {
             // Wait for modal to appear
             wait.until(ExpectedConditions.visibilityOfElementLocated(
                     ServiceNodeSSOPageLocators.ROLE_SELECTION_MODAL));
-            Thread.sleep(1000);
+            waitForLoading();
 
             // Try to get roles from dropdown first
             try {
@@ -318,6 +314,7 @@ public class ServiceNodeSSOPage {
                 // explicit wait for element found via relative path
                 wait.until(ExpectedConditions.elementToBeClickable(roleMenuItem));
             }
+
             try {
                 // Try Actions class move and click first
                 new org.openqa.selenium.interactions.Actions(driver)
@@ -325,26 +322,13 @@ public class ServiceNodeSSOPage {
                         .pause(Duration.ofMillis(200))
                         .click()
                         .perform();
-
-                // Verify if click worked (modal should disappear)
-                Thread.sleep(1000);
-                if (isRoleSelectionModalDisplayed()) {
-                    System.out.println("Actions click validation failed (modal still visible). Forcing JS click...");
-                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", roleMenuItem);
-                }
             } catch (Exception clickEx) {
                 System.out.println("Standard/Actions click failed for role, trying JS click...");
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", roleMenuItem);
             }
-            Thread.sleep(1000); // Increased wait after click
 
+            waitForLoading();
             System.out.println("✓ Selected role: " + roleName);
-        } catch (
-
-        InterruptedException e) {
-            Thread.currentThread().interrupt();
-            System.err.println("Thread interrupted: " + e.getMessage());
-            throw new RuntimeException("Role selection failed", e);
         } catch (Exception e) {
             System.err.println("Failed to select role " + roleName + ": " + e.getMessage());
             throw new RuntimeException("Role selection failed", e);
@@ -362,7 +346,7 @@ public class ServiceNodeSSOPage {
             submitBtn.click();
 
             // Wait for modal to close and navigation to complete
-            Thread.sleep(3000);
+            wait.until(ExpectedConditions.presenceOfElementLocated(ServiceNodeSSOPageLocators.SERVICE_DASHBOARD));
             System.out.println("✓ Role selection submitted");
         } catch (Exception e) {
             System.err.println("Failed to submit role: " + e.getMessage());
@@ -381,19 +365,12 @@ public class ServiceNodeSSOPage {
         if (isRoleSelectionModalDisplayed()) {
             selectRole(roleName);
             // Note: Clicking the role directly triggers navigation, no separate submit
-            // needed
-            try {
-                Thread.sleep(3000); // Wait for navigation to complete
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            // Wait for navigation to complete
+            wait.until(ExpectedConditions.presenceOfElementLocated(ServiceNodeSSOPageLocators.SERVICE_DASHBOARD));
+            wait.until(driver -> driver.getCurrentUrl().contains("dashboard"));
         } else {
             System.out.println("⚠ No role selection modal appeared - proceeding directly");
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            wait.until(driver -> driver.getCurrentUrl().contains("dashboard"));
         }
 
         System.out.println("✓ SSO login completed for " + serviceName + " as " + roleName);
@@ -406,8 +383,9 @@ public class ServiceNodeSSOPage {
      */
     public boolean isRedirectedToService() {
         try {
-            // Wait for URL to change
-            Thread.sleep(2000);
+            // Wait for URL change naturally
+            wait.until(driver -> !driver.getCurrentUrl().contains("service-nodes-sso")
+                    || driver.getCurrentUrl().contains("dashboard"));
 
             // Check for service dashboard elements
             try {
@@ -536,12 +514,9 @@ public class ServiceNodeSSOPage {
             wait.until(ExpectedConditions.or(
                     ExpectedConditions.visibilityOfElementLocated(ServiceNodeSSOPageLocators.PAGE_HEADER),
                     ExpectedConditions.urlContains("service-nodes-sso")));
-            Thread.sleep(1000);
+            waitForLoading();
 
             System.out.println("✓ Back to Service Node SSO page");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Navigation back failed", e);
         } catch (Exception e) {
             System.err.println("Failed to navigate back: " + e.getMessage());
             // Try emergency fallback
@@ -624,7 +599,7 @@ public class ServiceNodeSSOPage {
                     ServiceNodeSSOPageLocators.SEARCH_FIELD));
             searchField.clear();
             searchField.sendKeys(serviceName);
-            Thread.sleep(1000);
+            waitForLoading();
             System.out.println("✓ Search executed");
         } catch (Exception e) {
             System.err.println("Search field not found or error: " + e.getMessage());
