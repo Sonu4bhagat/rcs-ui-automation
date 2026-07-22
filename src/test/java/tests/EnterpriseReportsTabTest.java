@@ -211,6 +211,15 @@ public class EnterpriseReportsTabTest extends BaseTest {
 
             System.out.println("Found non-failed record at row: " + nonFailedRow);
 
+            // Not every service has a service node console to redirect into (e.g. SMS
+            // has no such icon, unlike RCS/WABA/IVR/OBD/CCS) - skip gracefully instead
+            // of a hard 15s-timeout failure if it isn't there.
+            if (!reportsPage.isRedirectIconAvailable(nonFailedRow)) {
+                System.out.println("⚠ No redirect-to-service-node icon available for SMS - "
+                        + "SMS may not have a service node console. Skipping redirect validation.");
+                return;
+            }
+
             // Click redirect to service node
             reportsPage.clickRedirectToServiceNode(nonFailedRow);
 

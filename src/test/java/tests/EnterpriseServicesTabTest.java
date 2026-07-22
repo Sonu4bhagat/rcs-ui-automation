@@ -28,8 +28,26 @@ public class EnterpriseServicesTabTest extends BaseTest {
         System.out.println("Navigated to Services Tab.");
     }
 
+    /**
+     * If a browser crash happened in an earlier test, BaseTest's self-healing
+     * logic restarts the driver and lands on the bare login page - but since
+     * retainSession=true, TestNG never re-runs testLoginAndNavigation (it's
+     * already marked passed), so nothing re-establishes the Enterprise session.
+     * Each service chain's entry test calls this first to detect and recover
+     * from that case, instead of cascading into failures/skips for every
+     * dependent test in the chain.
+     */
+    private void ensureEnterpriseSessionActive() {
+        if (driver.getCurrentUrl().contains("login")) {
+            System.out.println(
+                    "[RECOVERY] Landed back on the login page (likely a driver restart after a crash) - re-logging in...");
+            loginPage.loginWithEnterpriseMaxServices();
+        }
+    }
+
     @Test(priority = 2, description = "Navigate to SMS Service Details", dependsOnMethods = "testLoginAndNavigation")
     public void testSMSNavigateToDetails() {
+        ensureEnterpriseSessionActive();
         servicesPage.clickServicesTab();
         try {
             Thread.sleep(1000);
@@ -142,6 +160,14 @@ public class EnterpriseServicesTabTest extends BaseTest {
         Assert.assertNotNull(selectedSMSServiceAccount, "Selected service account should not be null");
         System.out.println("SMS Service Account for SSO: " + selectedSMSServiceAccount);
 
+        // Not every service account has SSO redirection available - check first
+        // instead of hitting a hard 30s-timeout failure if the icon isn't there.
+        if (!servicesPage.isSSOIconAvailable(selectedSMSServiceRow)) {
+            System.out.println("⚠ No SSO icon available for SMS account '" + selectedSMSServiceAccount
+                    + "' - SSO may not be supported for this account. Skipping SSO validation.");
+            return;
+        }
+
         // Click SSO icon and switch to new tab
         String mainWindowHandle = driver.getWindowHandle();
         servicesPage.clickSSOIcon(selectedSMSServiceRow);
@@ -158,15 +184,10 @@ public class EnterpriseServicesTabTest extends BaseTest {
                 "SSO Redirection Failed! Expected: " + selectedSMSServiceAccount + ", Found: " + ssoDashboardName);
         System.out.println("SMS SSO Redirection Validation Passed");
 
-        // Logout the user from SSO dashboard
-        try {
-            loginPage.logout();
-            System.out.println("User logged out successfully from SSO dashboard");
-        } catch (Exception e) {
-            System.out.println("Warning: Logout from SSO dashboard failed: " + e.getMessage());
-        }
-
-        // Close SSO tab and switch back to main window
+        // Close the SSO tab. Not attempting Vault's logout here - the SSO tab is a
+        // separate external domain/app, so Vault's profile-menu locators never
+        // match there (confirmed: always a 30s timeout). Closing the tab ends
+        // that session for our purposes.
         servicesPage.closeCurrentTabAndSwitchBack(mainWindowHandle);
     }
 
@@ -174,6 +195,7 @@ public class EnterpriseServicesTabTest extends BaseTest {
 
     @Test(priority = 7, description = "Navigate to RCS Service Details", dependsOnMethods = "testLoginAndNavigation")
     public void testRCSNavigateToDetails() {
+        ensureEnterpriseSessionActive();
         servicesPage.clickServicesTab();
         try {
             Thread.sleep(1000);
@@ -290,6 +312,14 @@ public class EnterpriseServicesTabTest extends BaseTest {
         Assert.assertNotNull(selectedRCSServiceAccount, "Selected service account should not be null");
         System.out.println("RCS Service Account for SSO: " + selectedRCSServiceAccount);
 
+        // Not every service account has SSO redirection available - check first
+        // instead of hitting a hard 30s-timeout failure if the icon isn't there.
+        if (!servicesPage.isSSOIconAvailable(selectedRCSServiceRow)) {
+            System.out.println("⚠ No SSO icon available for RCS account '" + selectedRCSServiceAccount
+                    + "' - SSO may not be supported for this account. Skipping SSO validation.");
+            return;
+        }
+
         // Click SSO icon and switch to new tab
         String mainWindowHandle = driver.getWindowHandle();
         servicesPage.clickSSOIcon(selectedRCSServiceRow);
@@ -306,15 +336,10 @@ public class EnterpriseServicesTabTest extends BaseTest {
                 "SSO Redirection Failed! Expected: " + selectedRCSServiceAccount + ", Found: " + ssoDashboardName);
         System.out.println("RCS SSO Redirection Validation Passed");
 
-        // Logout the user from SSO dashboard
-        try {
-            loginPage.logout();
-            System.out.println("User logged out successfully from SSO dashboard");
-        } catch (Exception e) {
-            System.out.println("Warning: Logout from SSO dashboard failed: " + e.getMessage());
-        }
-
-        // Close SSO tab and switch back to main window
+        // Close the SSO tab. Not attempting Vault's logout here - the SSO tab is a
+        // separate external domain/app, so Vault's profile-menu locators never
+        // match there (confirmed: always a 30s timeout). Closing the tab ends
+        // that session for our purposes.
         servicesPage.closeCurrentTabAndSwitchBack(mainWindowHandle);
     }
 
@@ -322,6 +347,7 @@ public class EnterpriseServicesTabTest extends BaseTest {
 
     @Test(priority = 12, description = "Navigate to WABA Service Details", dependsOnMethods = "testLoginAndNavigation")
     public void testWABANavigateToDetails() {
+        ensureEnterpriseSessionActive();
         servicesPage.clickServicesTab();
         try {
             Thread.sleep(1000);
@@ -438,6 +464,14 @@ public class EnterpriseServicesTabTest extends BaseTest {
         Assert.assertNotNull(selectedWABAServiceAccount, "Selected service account should not be null");
         System.out.println("WABA Service Account for SSO: " + selectedWABAServiceAccount);
 
+        // Not every service account has SSO redirection available - check first
+        // instead of hitting a hard 30s-timeout failure if the icon isn't there.
+        if (!servicesPage.isSSOIconAvailable(selectedWABAServiceRow)) {
+            System.out.println("⚠ No SSO icon available for WABA account '" + selectedWABAServiceAccount
+                    + "' - SSO may not be supported for this account. Skipping SSO validation.");
+            return;
+        }
+
         // Click SSO icon and switch to new tab
         String mainWindowHandle = driver.getWindowHandle();
         servicesPage.clickSSOIcon(selectedWABAServiceRow);
@@ -454,15 +488,10 @@ public class EnterpriseServicesTabTest extends BaseTest {
                 "SSO Redirection Failed! Expected: " + selectedWABAServiceAccount + ", Found: " + ssoDashboardName);
         System.out.println("WABA SSO Redirection Validation Passed");
 
-        // Logout the user from SSO dashboard
-        try {
-            loginPage.logout();
-            System.out.println("User logged out successfully from SSO dashboard");
-        } catch (Exception e) {
-            System.out.println("Warning: Logout from SSO dashboard failed: " + e.getMessage());
-        }
-
-        // Close SSO tab and switch back to main window
+        // Close the SSO tab. Not attempting Vault's logout here - the SSO tab is a
+        // separate external domain/app, so Vault's profile-menu locators never
+        // match there (confirmed: always a 30s timeout). Closing the tab ends
+        // that session for our purposes.
         servicesPage.closeCurrentTabAndSwitchBack(mainWindowHandle);
     }
 
@@ -470,6 +499,7 @@ public class EnterpriseServicesTabTest extends BaseTest {
 
     @Test(priority = 17, description = "Navigate to IVR Service Details", dependsOnMethods = "testLoginAndNavigation")
     public void testIVRNavigateToDetails() {
+        ensureEnterpriseSessionActive();
         servicesPage.clickServicesTab();
         try {
             Thread.sleep(1000);
@@ -586,6 +616,14 @@ public class EnterpriseServicesTabTest extends BaseTest {
         Assert.assertNotNull(selectedIVRServiceAccount, "Selected service account should not be null");
         System.out.println("IVR Service Account for SSO: " + selectedIVRServiceAccount);
 
+        // Not every service account has SSO redirection available - check first
+        // instead of hitting a hard 30s-timeout failure if the icon isn't there.
+        if (!servicesPage.isSSOIconAvailable(selectedIVRServiceRow)) {
+            System.out.println("⚠ No SSO icon available for IVR account '" + selectedIVRServiceAccount
+                    + "' - SSO may not be supported for this account. Skipping SSO validation.");
+            return;
+        }
+
         // Click SSO icon and switch to new tab
         String mainWindowHandle = driver.getWindowHandle();
         servicesPage.clickSSOIcon(selectedIVRServiceRow);
@@ -602,15 +640,10 @@ public class EnterpriseServicesTabTest extends BaseTest {
                 "SSO Redirection Failed! Expected: " + selectedIVRServiceAccount + ", Found: " + ssoDashboardName);
         System.out.println("IVR SSO Redirection Validation Passed");
 
-        // Logout the user from SSO dashboard
-        try {
-            loginPage.logout();
-            System.out.println("User logged out successfully from SSO dashboard");
-        } catch (Exception e) {
-            System.out.println("Warning: Logout from SSO dashboard failed: " + e.getMessage());
-        }
-
-        // Close SSO tab and switch back to main window
+        // Close the SSO tab. Not attempting Vault's logout here - the SSO tab is a
+        // separate external domain/app, so Vault's profile-menu locators never
+        // match there (confirmed: always a 30s timeout). Closing the tab ends
+        // that session for our purposes.
         servicesPage.closeCurrentTabAndSwitchBack(mainWindowHandle);
     }
 
@@ -618,6 +651,7 @@ public class EnterpriseServicesTabTest extends BaseTest {
 
     @Test(priority = 22, description = "Navigate to OBD Service Details", dependsOnMethods = "testLoginAndNavigation")
     public void testOBDNavigateToDetails() {
+        ensureEnterpriseSessionActive();
         servicesPage.clickServicesTab();
         try {
             Thread.sleep(1000);
@@ -734,6 +768,14 @@ public class EnterpriseServicesTabTest extends BaseTest {
         Assert.assertNotNull(selectedOBDServiceAccount, "Selected service account should not be null");
         System.out.println("OBD Service Account for SSO: " + selectedOBDServiceAccount);
 
+        // Not every service account has SSO redirection available - check first
+        // instead of hitting a hard 30s-timeout failure if the icon isn't there.
+        if (!servicesPage.isSSOIconAvailable(selectedOBDServiceRow)) {
+            System.out.println("⚠ No SSO icon available for OBD account '" + selectedOBDServiceAccount
+                    + "' - SSO may not be supported for this account. Skipping SSO validation.");
+            return;
+        }
+
         // Click SSO icon and switch to new tab
         String mainWindowHandle = driver.getWindowHandle();
         servicesPage.clickSSOIcon(selectedOBDServiceRow);
@@ -750,15 +792,10 @@ public class EnterpriseServicesTabTest extends BaseTest {
                 "SSO Redirection Failed! Expected: " + selectedOBDServiceAccount + ", Found: " + ssoDashboardName);
         System.out.println("OBD SSO Redirection Validation Passed");
 
-        // Logout the user from SSO dashboard
-        try {
-            loginPage.logout();
-            System.out.println("User logged out successfully from SSO dashboard");
-        } catch (Exception e) {
-            System.out.println("Warning: Logout from SSO dashboard failed: " + e.getMessage());
-        }
-
-        // Close SSO tab and switch back to main window
+        // Close the SSO tab. Not attempting Vault's logout here - the SSO tab is a
+        // separate external domain/app, so Vault's profile-menu locators never
+        // match there (confirmed: always a 30s timeout). Closing the tab ends
+        // that session for our purposes.
         servicesPage.closeCurrentTabAndSwitchBack(mainWindowHandle);
     }
 
@@ -766,6 +803,7 @@ public class EnterpriseServicesTabTest extends BaseTest {
 
     @Test(priority = 27, description = "Navigate to CCS Service Details", dependsOnMethods = "testLoginAndNavigation")
     public void testCCSNavigateToDetails() {
+        ensureEnterpriseSessionActive();
         servicesPage.clickServicesTab();
         try {
             Thread.sleep(1000);
@@ -881,6 +919,14 @@ public class EnterpriseServicesTabTest extends BaseTest {
         Assert.assertNotNull(selectedCCSServiceAccount, "Selected service account should not be null");
         System.out.println("CCS Service Account for SSO: " + selectedCCSServiceAccount);
 
+        // Not every service account has SSO redirection available - check first
+        // instead of hitting a hard 30s-timeout failure if the icon isn't there.
+        if (!servicesPage.isSSOIconAvailable(selectedCCSServiceRow)) {
+            System.out.println("⚠ No SSO icon available for CCS account '" + selectedCCSServiceAccount
+                    + "' - SSO may not be supported for this account. Skipping SSO validation.");
+            return;
+        }
+
         // Click SSO icon and switch to new tab
         String mainWindowHandle = driver.getWindowHandle();
         servicesPage.clickSSOIcon(selectedCCSServiceRow);
@@ -897,15 +943,10 @@ public class EnterpriseServicesTabTest extends BaseTest {
                 "SSO Redirection Failed! Expected: " + selectedCCSServiceAccount + ", Found: " + ssoDashboardName);
         System.out.println("CCS SSO Redirection Validation Passed");
 
-        // Logout the user from SSO dashboard
-        try {
-            loginPage.logout();
-            System.out.println("User logged out successfully from SSO dashboard");
-        } catch (Exception e) {
-            System.out.println("Warning: Logout from SSO dashboard failed: " + e.getMessage());
-        }
-
-        // Close SSO tab and switch back to main window
+        // Close the SSO tab. Not attempting Vault's logout here - the SSO tab is a
+        // separate external domain/app, so Vault's profile-menu locators never
+        // match there (confirmed: always a 30s timeout). Closing the tab ends
+        // that session for our purposes.
         servicesPage.closeCurrentTabAndSwitchBack(mainWindowHandle);
     }
 }

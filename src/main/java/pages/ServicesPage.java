@@ -332,6 +332,21 @@ public class ServicesPage {
         waitForLoadingSpinner();
     }
 
+    /**
+     * Checks (with a short wait) whether the SSO icon exists for a row, without
+     * throwing. Not every service account has SSO redirection available.
+     */
+    public boolean isSSOIconAvailable(int rowIndex) {
+        try {
+            WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(5));
+            return shortWait.until(
+                    ExpectedConditions.presenceOfElementLocated(ServicesPageLocators.getSSOIconByRow(rowIndex)))
+                    != null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public void clickSSOIcon(int rowIndex) {
         WebElement ssoIcon = wait.until(
                 ExpectedConditions.elementToBeClickable(ServicesPageLocators.getSSOIconByRow(rowIndex)));
@@ -514,7 +529,11 @@ public class ServicesPage {
     }
 
     public void closeCurrentTabAndSwitchBack(String originalHandle) {
-        driver.close();
+        try {
+            driver.close();
+        } catch (Exception e) {
+            System.out.println("Warning: Failed to close SSO tab (may already be closed): " + e.getMessage());
+        }
         driver.switchTo().window(originalHandle);
     }
 

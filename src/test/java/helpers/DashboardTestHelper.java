@@ -3,13 +3,12 @@ package helpers;
 import org.openqa.selenium.WebDriver;
 import org.testng.Assert;
 import pages.DashboardPage;
+import base.DriverFactory;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import java.time.Duration;
 
-/**
- * Helper class for Dashboard service testing
- * Contains reusable methods for testing services with calendar filters
- */
 public class DashboardTestHelper {
-
     private DashboardPage dashboardPage;
     private WebDriver driver;
 
@@ -20,7 +19,9 @@ public class DashboardTestHelper {
 
     /**
      * Test service navigation
-     * Navigates to service and verifies page load
+     * Navigates to service and verifies page load.
+     * If the service is not provisioned in the current account (element not found),
+     * the test is skipped gracefully instead of failing.
      * 
      * @param serviceName Name of the service to test
      * @throws InterruptedException if thread sleep is interrupted
@@ -56,19 +57,43 @@ public class DashboardTestHelper {
 
             // Step 1: Navigate to service with retry logic
             System.out.println("Step 1: Navigating to " + serviceName + "...");
-            boolean clicked = false;
             try {
                 dashboardPage.clickService(serviceName);
-                clicked = true;
             } catch (Exception e) {
+                // If element is not found at all, this service is not provisioned - skip gracefully
+                String errMsg = e.getMessage() != null ? e.getMessage() : "";
+                if (errMsg.contains("Element not found even via presence check")
+                        || errMsg.contains("no such element")
+                        || errMsg.contains("Service not supported")) {
+                    System.out.println("⚠️ SKIP: Service '" + serviceName + "' is not available in the sidebar for this account. It may not be provisioned.");
+                    throw new org.testng.SkipException(
+                            "Service '" + serviceName + "' is not provisioned/available in this Enterprise account.");
+                }
                 System.out.println("Standard click failed for " + serviceName + ". Retrying...");
                 // Retry is handled inside clickService usually, but if it throws, we catch here
             }
 
             // Use significantly longer wait in headless mode or if click was flaky
-            int waitTime = base.DriverFactory.isHeadlessModeEnabled() ? 8000 : 3000;
+            int waitTime = DriverFactory.isHeadlessModeEnabled() ? 8000 : 3000;
             System.out.println("Waiting " + waitTime + "ms for page load...");
             Thread.sleep(waitTime);
+            if (serviceName.equalsIgnoreCase("Live Agent")) {
+                System.out.println("Waiting for Live Agent URL verification...");
+                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+                try {
+                    boolean urlOk = wait.until(ExpectedConditions.or(
+                            ExpectedConditions.urlContains("live"),
+                            ExpectedConditions.urlContains("agent")
+                    ));
+                    if (!urlOk) {
+                        System.err.println("❌ FAILURE: Live Agent URL verification failed.");
+                        Assert.fail("Live Agent URL verification failed");
+                    }
+                } catch (Exception e) {
+                    System.err.println("❌ FAILURE: Exception during Live Agent URL verification: " + e.getMessage());
+                    Assert.fail("Exception during Live Agent URL verification: " + e.getMessage());
+                }
+            }
 
             // Step 2: Verify service page loaded
             String serviceCheckName = getServiceCheckName(serviceName);
@@ -100,6 +125,9 @@ public class DashboardTestHelper {
             System.out.println("✓ Successfully navigated to " + serviceName + " service");
             System.out.println("✓ " + serviceName + " service navigation PASSED\n");
 
+        } catch (org.testng.SkipException se) {
+            // Re-throw skip exceptions so TestNG marks them as SKIPPED, not FAILED
+            throw se;
         } catch (AssertionError e) {
             System.err.println("❌ TEST FAILED: " + serviceName + " - " + e.getMessage());
             throw e;

@@ -104,9 +104,12 @@ public class CustomerOrgPageLocators {
         public static final By ROLES_NO_DATA_MESSAGE = By.xpath(
                         "//*[contains(text(), 'No data found') or contains(text(), 'No roles found') or contains(text(), 'No Data Found') or contains(text(), 'No matching records found') or contains(text(), 'No Results Found')]");
 
-        // Form elements - accordions for permissions
-        public static final By ROLE_FORM_ACCORDIONS = By.xpath(
-                        "//button[contains(@class, 'accordion') or contains(@class, 'mat-expansion')]");
+        // Form section headers for the Add/Edit Role form.
+        // NOTE: Confirmed via live diagnostics that this form has NO accordion /
+        // expansion-panel widgets - it's a flat form whose subsections are plain
+        // <h6> headers ("Password Setup", "Access Control List", "Wallets *", ...)
+        // inside the <mat-tab-nav-panel> content area.
+        public static final By ROLE_FORM_SECTION_HEADERS = By.xpath("//mat-tab-nav-panel//h6");
 
         // Role details/view page elements
         public static final By ROLES_VIEW_MODAL = By.xpath(
@@ -133,13 +136,14 @@ public class CustomerOrgPageLocators {
                         "//h1 | //h2[contains(@class, 'page-title')] | //*[contains(@class, 'page-header')]");
         public static final By FILTER_DROPDOWN = By.id("serviceAccountsDropDown");
         public static final By ENTERPRISE_FILTER_OPTION = By.id("orgEnterprise");
+        // Confirmed via live diagnostics: resets the org-type filter to show all types.
+        public static final By ORG_ALL_FILTER_OPTION = By.id("orgAll");
         public static final By APPLY_FILTER_BUTTON = By.xpath("//button[contains(text(), 'Apply')]");
 
         // Table Elements
         public static final By TABLE_ROWS = By.xpath("//table//tbody//tr | //mat-row");
         public static final By TABLE_DATA = By.xpath("//table//tbody//tr//td | //mat-cell");
         public static final By ENTERPRISE_ROW_LINK = By.xpath("//table//tr[.//td[contains(text(), 'Enterprise')]]//a");
-        public static final By RESELLER_ROW_LINK = By.xpath("//table//tr[.//td[contains(text(), 'Reseller')]]//a");
         public static final By REDIRECT_TO_OVERVIEW_BUTTON = By
                         .cssSelector("button[mattooltip='Redirect to Customer Overview']");
 

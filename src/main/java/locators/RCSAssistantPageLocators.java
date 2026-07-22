@@ -31,9 +31,9 @@ public class RCSAssistantPageLocators {
                                         "//h4[contains(text(),'Manage Assistants')] | " +
                                         "//div[contains(@class,'header')]//span[contains(text(),'Assistants')]");
         public static final By RCS_PORTAL_LOGO = By.xpath(
-                        "//img[contains(@src,'logo') or contains(@alt,'SPARC')] | " +
-                                        "//img[contains(@src,'smartping')] | " +
-                                        "//div[contains(@class,'logo')]//img");
+                        "//img[contains(@src,'logo') and (contains(@src,'ocmp') or contains(@src,'sparc'))] | " +
+                                        "//img[contains(@alt,'SPARC')] | " +
+                                        "//div[contains(@class,'logo')]//img[contains(@src,'ocmp')]");
 
         // ==================== Assistants Table ====================
         public static final By ASSISTANTS_TABLE = By.xpath("//table[contains(@class,'table')]");

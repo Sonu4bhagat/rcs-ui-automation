@@ -287,6 +287,7 @@ public class LoginPage {
     }
 
     public void loginWithResellerCredentials() {
+        ExtentReportManager.logStep("Login with Reseller credentials");
         String username = ConfigReader.get("reseller.email");
         String password = ConfigReader.get("reseller.password");
 
@@ -296,9 +297,27 @@ public class LoginPage {
 
         handleOTP(username, password);
 
+        // Same as Enterprise: if this reseller account is linked to multiple
+        // wallets, a "Select Wallet" screen appears before the dashboard. This
+        // was previously unhandled here (unlike loginWithEnterpriseCredentials),
+        // which only worked because the only caller (LoginTest) never exercised
+        // an account with more than one wallet.
+        try {
+            WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(5));
+            shortWait.until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.WALLET_OPEN_BUTTON));
+            ExtentReportManager.logStep("Select wallet from wallet selection screen");
+            System.out.println("[INFO] Wallet selection screen detected. Opening first wallet...");
+            driver.findElement(LoginPageLocators.WALLET_OPEN_BUTTON).click();
+        } catch (TimeoutException e) {
+            ExtentReportManager.logInfo("No wallet selection screen - direct dashboard access");
+            System.out.println("[INFO] Wallet selection screen not found, assuming direct dashboard access.");
+        }
+
+        ExtentReportManager.logStep("Verify Reseller dashboard is loaded");
         if (!isDashboardLoaded(UserRole.RESELLER)) {
             throw new IllegalStateException("Reseller dashboard did not load.");
         }
+        ExtentReportManager.logPass("Successfully logged in as Reseller");
     }
 
     public String getInvalidCredentialsErrorMessage() {

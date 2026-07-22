@@ -12,6 +12,7 @@ public class AdminPayload {
     private String username;
     private String password;
     private String tId;
+    private String requestId;
 
     // Customer Creation
     private String customerId;
@@ -83,6 +84,14 @@ public class AdminPayload {
 
     public void settId(String tId) {
         this.tId = tId;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
     }
 
     public String getCustomerId() {

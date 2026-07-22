@@ -63,28 +63,38 @@ public class BaseTest {
         if (driver != null) {
             String currentUrl = driver.getCurrentUrl();
             String targetUrl = ConfigReader.get("url"); // Login URL
-            boolean isOnLoginPage = currentUrl.contains("login") || currentUrl.equals(targetUrl);
+
+            // Extract hosts to ensure we only redirect if we are on the WRONG page of the
+            // SAME system
+            String currentHost = "";
+            String targetHost = "";
+            try {
+                currentHost = new java.net.URL(currentUrl).getHost();
+                targetHost = new java.net.URL(targetUrl).getHost();
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
+
+            boolean isSameHost = currentHost.equals(targetHost);
+            boolean isOnLoginPage = (currentUrl.contains("login") || currentUrl.equals(targetUrl)) && isSameHost;
 
             System.out.println(
-                    "[DEBUG] Test=" + method.getName() + " URL=" + currentUrl + " RetainSession=" + retainSession);
+                    "[DEBUG] Test=" + method.getName() + " URL=" + currentUrl + " HostMatch=" + isSameHost
+                            + " RetainSession=" + retainSession);
 
             if (retainSession) {
-                // If we want to retain session, but we are back on login page (e.g. prev test
-                // logged out or crashed)
+                // If we want to retain session, but we are back on login page of the SAME host
                 if (isOnLoginPage) {
                     System.out.println(
-                            "[WARN] retainSession=true but on Login page. Forcing navigation to Login to allow re-login.");
+                            "[WARN] retainSession=true but on Login page of " + targetHost
+                                    + ". Forcing navigation to Login to allow re-login.");
 
-                    // Most tests call `loginPage.loginWith...`. If that method sees dashboard, it
-                    // skips login.
-                    // If it sees login page, it logs in. So ensuring we are purely on login page is
-                    // good.
                     if (!currentUrl.equals(targetUrl)) {
                         driver.get(targetUrl);
                     }
                 }
             } else {
-                // !retainSession => Ensure we are at Login Page
+                // !retainSession => Ensure we are at Login Page of the target host
                 if (!isOnLoginPage) {
                     System.out.println("[INFO] Navigating to login page for test: " + method.getName());
                     driver.get(targetUrl);

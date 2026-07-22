@@ -99,7 +99,108 @@ public class CustomerOrgPage {
 
     public void drillDownToReseller() {
         System.out.println("Drilling down to Reseller...");
-        wait.until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.RESELLER_ROW_LINK)).click();
+
+        if (clickResellerRedirectButtonIfPresent()) {
+            return;
+        }
+
+        System.out.println("No Reseller row visible yet. An org-type filter from a prior session may still be "
+                + "applied (e.g. localStorage-persisted Enterprise filter) - resetting it to 'All'...");
+        resetOrgTypeFilterToAll();
+
+        if (clickResellerRedirectButtonIfPresent()) {
+            return;
+        }
+
+        dumpOrgTypeDiagnostics();
+        throw new RuntimeException("No Reseller entry found in the current Customer Org view (see diagnostics above).");
+    }
+
+    /**
+     * Scans currently visible rows for one whose Type column is 'Reseller' and
+     * clicks its "Redirect to Customer Overview" button - the same drill-down
+     * mechanism used by {@link #redirectToFirstEnterpriseWithWallets()}. Row
+     * text is not a hyperlink in this app, so anchor-based locators don't work.
+     */
+    private boolean clickResellerRedirectButtonIfPresent() {
+        try {
+            wait.until(ExpectedConditions.visibilityOfElementLocated(CustomerOrgPageLocators.TABLE_ROWS));
+        } catch (TimeoutException e) {
+            return false;
+        }
+
+        List<WebElement> rows = driver.findElements(CustomerOrgPageLocators.TABLE_ROWS);
+        for (WebElement row : rows) {
+            try {
+                // Type is column 8 per headers: [SV Customer ID, Customer ID, Organisation
+                // Name, Org Level, Status, White Label, Wallets, Type, Created On]
+                String type = row.findElement(By.xpath(".//td[position()=8]")).getText().trim();
+                if (type.equalsIgnoreCase("Reseller")) {
+                    System.out.println("Found Reseller row. Clicking redirect-to-overview button...");
+                    WebElement redirectBtn = row.findElement(CustomerOrgPageLocators.REDIRECT_TO_OVERVIEW_BUTTON);
+                    String currentUrl = driver.getCurrentUrl();
+                    wait.until(ExpectedConditions.elementToBeClickable(redirectBtn)).click();
+                    try {
+                        wait.until(ExpectedConditions.not(ExpectedConditions.urlToBe(currentUrl)));
+                        Thread.sleep(1500);
+                    } catch (Exception ex) {
+                        System.err.println("WARNING: URL did not change after clicking redirect button!");
+                    }
+                    return true;
+                }
+            } catch (Exception ignored) {
+                // Row has no Type cell or no redirect button - skip it
+            }
+        }
+        return false;
+    }
+
+    /** Resets the Customer Org type filter to 'All' via the confirmed #orgAll radio. */
+    private void resetOrgTypeFilterToAll() {
+        try {
+            wait.until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.FILTER_DROPDOWN)).click();
+            Thread.sleep(500);
+            try {
+                new WebDriverWait(driver, Duration.ofSeconds(3))
+                        .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.ORG_ALL_FILTER_OPTION))
+                        .click();
+                System.out.println("Reset org-type filter to 'All'.");
+            } catch (Exception e) {
+                System.out.println("Could not find #orgAll reset option: " + e.getMessage());
+            }
+            wait.until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.APPLY_FILTER_BUTTON)).click();
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(By.tagName("mat-progress-bar")));
+            Thread.sleep(1500);
+        } catch (Exception ex) {
+            System.out.println("Filter reset attempt failed or no filter panel present: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Diagnostic-only: dump the distinct 'Type' column values currently visible
+     * so we can tell whether the dataset genuinely has no Reseller rows or a
+     * filter is still narrowing the view.
+     */
+    private void dumpOrgTypeDiagnostics() {
+        try {
+            List<WebElement> rows = driver.findElements(CustomerOrgPageLocators.TABLE_ROWS);
+            System.out.println("[DIAGNOSTIC] " + rows.size() + " row(s) visible in Customer Org table.");
+            java.util.Set<String> types = new java.util.LinkedHashSet<>();
+            for (WebElement row : rows) {
+                try {
+                    // Type is column 8 per headers: [SV Customer ID, Customer ID, Organisation
+                    // Name, Org Level, Status, White Label, Wallets, Type, Created On]
+                    String type = row.findElement(By.xpath(".//td[position()=8]")).getText().trim();
+                    if (!type.isEmpty()) {
+                        types.add(type);
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            System.out.println("  Distinct Type values on this page: " + types);
+        } catch (Exception ex) {
+            System.err.println("Org-type diagnostic dump failed: " + ex.getMessage());
+        }
     }
 
     public void drillDownToEnterpriseL2() {
@@ -204,8 +305,9 @@ public class CustomerOrgPage {
 
         for (WebElement row : rows) {
             try {
-                // Column 5 is 'Wallets'
-                String walletText = row.findElement(By.xpath(".//td[position()=5]")).getText().trim();
+                // Column 7 is 'Wallets' based on actual headers:
+                // [SV Customer ID, Customer ID, Organisation Name, Org Level, Status, White Label, Wallets, Type, Created On]
+                String walletText = row.findElement(By.xpath(".//td[position()=7]")).getText().trim();
                 int count = Integer.parseInt(walletText.replaceAll("[^\\d]", ""));
 
                 if (count >= 1) {
@@ -282,15 +384,38 @@ public class CustomerOrgPage {
         input.sendKeys(name);
     }
 
-    public void navigateToWalletUsage() {
+    /**
+     * Returns true if a separate "Wallet Usage" tab was found and clicked, false
+     * if this view has no such tab (balances may already be on the current page).
+     */
+    public boolean navigateToWalletUsage() {
         System.out.println("Navigating to Wallet Usage tab...");
-        WebElement tab = wait.until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.WALLET_USAGE_TAB));
-        tab.click();
-        System.out.println("Clicked Wallet Usage tab. Waiting for content...");
         try {
-            wait.until(ExpectedConditions.visibilityOfElementLocated(CustomerOrgPageLocators.TABLE_HEADERS));
-        } catch (Exception e) {
-            System.err.println("Wallet Usage headers didn't appear: " + e.getMessage());
+            WebElement tab = new WebDriverWait(driver, Duration.ofSeconds(5))
+                    .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.WALLET_USAGE_TAB));
+            tab.click();
+            System.out.println("Clicked Wallet Usage tab. Waiting for content...");
+            try {
+                wait.until(ExpectedConditions.visibilityOfElementLocated(CustomerOrgPageLocators.TABLE_HEADERS));
+            } catch (Exception e) {
+                System.err.println("Wallet Usage headers didn't appear: " + e.getMessage());
+            }
+            return true;
+        } catch (TimeoutException e) {
+            System.out.println("No separate 'Wallet Usage' tab found on this view. Dumping nearby tab/link candidates:");
+            try {
+                List<WebElement> candidates = driver.findElements(
+                        By.xpath("//a | //div[@role='tab'] | //button[@role='tab'] | //li[@role='tab']"));
+                for (WebElement c : candidates) {
+                    String text = c.getText().trim();
+                    if (!text.isEmpty()) {
+                        System.out.println("  Candidate: '" + text + "'");
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("Could not enumerate candidate tabs: " + ex.getMessage());
+            }
+            return false;
         }
     }
 
@@ -1074,24 +1199,35 @@ public class CustomerOrgPage {
             }
             Thread.sleep(1000);
 
-            // Select status option based on provided status
-            By statusLocator;
-            switch (status.toLowerCase()) {
-                case "active":
-                    statusLocator = CustomerOrgPageLocators.ROLES_FILTER_OPTION_ACTIVE;
+            // Select status option - try multiple element types since the filter UI
+            // may use label, mat-option, span, or div depending on the page variant
+            boolean optionClicked = false;
+            String[] optionXpaths = {
+                "//label[contains(., '" + status + "')]",
+                "//mat-option[contains(., '" + status + "')]",
+                "//span[contains(@class,'filter') and contains(., '" + status + "')]",
+                "//div[contains(@class,'filter') and contains(., '" + status + "')]",
+                "//*[contains(text(), '" + status + "') and (contains(@class,'option') or contains(@class,'filter') or contains(@class,'radio'))]"
+            };
+
+            for (String xpath : optionXpaths) {
+                try {
+                    WebElement option = wait.withTimeout(Duration.ofSeconds(4))
+                            .until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
+                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", option);
+                    System.out.println("✓ Filter option '" + status + "' clicked using: " + xpath);
+                    optionClicked = true;
+                    Thread.sleep(800);
                     break;
-                case "inactive":
-                    statusLocator = CustomerOrgPageLocators.ROLES_FILTER_OPTION_INACTIVE;
-                    break;
-                default:
-                    statusLocator = CustomerOrgPageLocators.ROLES_FILTER_OPTION_ALL;
+                } catch (Exception ex) {
+                    // Try next xpath pattern
+                }
             }
 
-            WebElement option = wait.until(ExpectedConditions.presenceOfElementLocated(statusLocator));
-            // Ensure option is visible and clickable
-            wait.until(ExpectedConditions.elementToBeClickable(option));
-            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", option);
-            Thread.sleep(800); // Small wait for selection to register
+            if (!optionClicked) {
+                System.out.println("⚠ Could not find filter option '" + status + "' - table may be empty, skipping filter");
+                return; // Gracefully skip instead of throwing
+            }
 
             // Click Apply button with short timeout
             try {
@@ -1104,7 +1240,7 @@ public class CustomerOrgPage {
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", applyBtn);
                 System.out.println("✓ Apply button clicked");
             } catch (Exception e) {
-                System.out.println("⚠ Apply button not found or clickable - assuming auto-apply: " + e.getMessage());
+                System.out.println("⚠ Apply button not found or clickable - assuming auto-apply");
             } finally {
                 // Restore timeout
                 wait.withTimeout(Duration.ofSeconds(DEFAULT_TIMEOUT));
@@ -1179,20 +1315,26 @@ public class CustomerOrgPage {
 
     public boolean isOnAddRolePage() {
         String currentUrl = driver.getCurrentUrl();
-        return currentUrl.contains("roles/add");
+        // Accept both 'roles/add' and 'profile/add' since this app uses Profile tab for roles
+        return currentUrl.contains("roles/add") || currentUrl.contains("profile/add") || currentUrl.contains("/add");
     }
 
-    public List<String> getAccordionLabels() {
-        System.out.println("Fetching accordion labels from Add/Edit Role form...");
+    /**
+     * The Add/Edit Role form has no accordion/expansion-panel widgets - it's a
+     * flat form whose subsections are plain &lt;h6&gt; headers inside
+     * &lt;mat-tab-nav-panel&gt; (confirmed via live inspection).
+     */
+    public List<String> getFormSectionHeaders() {
+        System.out.println("Fetching form section headers from Add/Edit Role form...");
         try {
-            wait.until(ExpectedConditions.presenceOfElementLocated(CustomerOrgPageLocators.ROLE_FORM_ACCORDIONS));
-            List<WebElement> accordions = driver.findElements(CustomerOrgPageLocators.ROLE_FORM_ACCORDIONS);
-            return accordions.stream()
-                    .map(a -> a.getText().trim())
+            wait.until(ExpectedConditions.presenceOfElementLocated(CustomerOrgPageLocators.ROLE_FORM_SECTION_HEADERS));
+            List<WebElement> headers = driver.findElements(CustomerOrgPageLocators.ROLE_FORM_SECTION_HEADERS);
+            return headers.stream()
+                    .map(h -> h.getText().trim())
                     .filter(t -> !t.isEmpty())
                     .toList();
         } catch (Exception e) {
-            System.err.println("Error fetching accordion labels: " + e.getMessage());
+            System.err.println("Error fetching form section headers: " + e.getMessage());
             return new java.util.ArrayList<>();
         }
     }

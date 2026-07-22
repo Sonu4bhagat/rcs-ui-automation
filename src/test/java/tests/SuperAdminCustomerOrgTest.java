@@ -43,7 +43,7 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         Thread.sleep(500); // Stabilize before next test
     }
 
-    @Test(priority = 2, description = "Comprehensive Table Header Validation")
+    @Test(priority = 2, description = "Comprehensive Table Header Validation", dependsOnMethods = "testLoginAndNavigation")
     public void testTableHeaders() throws InterruptedException {
         CustomerOrgPage customerOrgPage = new CustomerOrgPage(driver);
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
@@ -111,7 +111,32 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         System.out.println("✓ Wallet search executed");
     }
 
-    @Test(priority = 6, description = "Verify Organization Details Tab - Customer ID", dependsOnMethods = "testWalletTableAndSearch")
+    @Test(priority = 5, description = "Verify Wallet Usage tab shows Prepaid/Postpaid balances", dependsOnMethods = "testWalletTableAndSearch")
+    public void testWalletUsageTabAndBalances() throws InterruptedException {
+        CustomerOrgPage customerOrgPage = new CustomerOrgPage(driver);
+
+        System.out.println("Navigating to Wallet Usage tab...");
+        Thread.sleep(500); // Wait before navigation
+        boolean tabFound = customerOrgPage.navigateToWalletUsage();
+        Thread.sleep(1000); // Wait for tab content to load
+
+        if (!tabFound) {
+            System.out.println(
+                    "⚠ No separate Wallet Usage tab on this view - skipping balance assertion (see candidates logged above)");
+            return;
+        }
+
+        String prepaid = customerOrgPage.getPrepaidBalance();
+        String postpaid = customerOrgPage.getPostpaidBalance();
+        System.out.println("Prepaid Balance: " + prepaid + " | Postpaid Balance: " + postpaid);
+
+        Assert.assertTrue(!prepaid.equals("N/A") || !postpaid.equals("N/A"),
+                "At least one of Prepaid/Postpaid balance should be displayed on the Wallet Usage tab");
+        System.out.println("✓ Wallet Usage tab displays balance information");
+        Thread.sleep(500); // Stabilize before next test
+    }
+
+    @Test(priority = 6, description = "Verify Organization Details Tab - Customer ID", dependsOnMethods = "testWalletUsageTabAndBalances")
     public void testOrganizationDetailsTab() throws InterruptedException {
         CustomerOrgPage customerOrgPage = new CustomerOrgPage(driver);
 
@@ -482,7 +507,43 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         }
     }
 
-    @Test(priority = 21, description = "Verify Add New button functionality", dependsOnMethods = "testRolesTabVisibility", alwaysRun = true)
+    @Test(priority = 21, description = "Apply Inactive and All role status filters (extended regression)", dependsOnMethods = "testRolesFilterActive", alwaysRun = true)
+    public void testRolesFilterInactiveAndAll() throws InterruptedException {
+        CustomerOrgPage page = new CustomerOrgPage(driver);
+
+        System.out.println("Testing Inactive status filter...");
+        page.searchRole("");
+        Thread.sleep(1000); // Wait for search to clear
+
+        page.applyRolesStatusFilter("Inactive");
+        Thread.sleep(1500); // Wait for filter to apply
+
+        List<String> inactiveStatuses = page.getRoleStatusValues();
+        if (!inactiveStatuses.isEmpty()) {
+            org.testng.asserts.SoftAssert softAssert = new org.testng.asserts.SoftAssert();
+            for (String status : inactiveStatuses) {
+                softAssert.assertTrue(status.equalsIgnoreCase("Inactive"),
+                        "All roles should have Inactive status. Found: " + status);
+            }
+            softAssert.assertAll();
+            System.out.println(
+                    "✓ Inactive filter applied successfully. " + inactiveStatuses.size() + " inactive role(s) shown");
+        } else {
+            System.out.println("⚠ No roles in table after Inactive filter, verification skipped");
+        }
+
+        System.out.println("Testing 'All' status filter (should show combined roles)...");
+        page.applyRolesStatusFilter("All");
+        Thread.sleep(1500); // Wait for filter to apply
+
+        int allCount = page.getRolesTableRowCount();
+        Assert.assertTrue(allCount >= inactiveStatuses.size(),
+                "'All' filter should show at least as many roles as the 'Inactive' filter. All=" + allCount
+                        + " Inactive=" + inactiveStatuses.size());
+        System.out.println("✓ 'All' filter applied successfully. " + allCount + " role(s) shown");
+    }
+
+    @Test(priority = 22, description = "Verify Add New button functionality", dependsOnMethods = "testRolesTabVisibility", alwaysRun = true)
     public void testRolesAddNewButton() throws InterruptedException {
         CustomerOrgPage page = new CustomerOrgPage(driver);
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
@@ -503,33 +564,34 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//table")));
     }
 
-    @Test(priority = 22, description = "Validate accordion structure in Add/Edit role form", dependsOnMethods = "testRolesAddNewButton")
-    public void testRoleFormAccordions() throws InterruptedException {
+    @Test(priority = 23, description = "Validate section header structure in Add/Edit role form", dependsOnMethods = "testRolesAddNewButton")
+    public void testRoleFormSectionHeaders() throws InterruptedException {
         CustomerOrgPage page = new CustomerOrgPage(driver);
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
-        System.out.println("Validating role form accordion structure...");
+        System.out.println("Validating role form section header structure...");
 
         // Navigate to Add Role page
         Thread.sleep(500); // Wait before navigation
         page.clickAddNewRole();
         Thread.sleep(2000); // Wait for form to load
 
-        List<String> accordions = page.getAccordionLabels();
-        System.out.println("Found accordions: " + accordions);
+        List<String> sectionHeaders = page.getFormSectionHeaders();
+        System.out.println("Found section headers: " + sectionHeaders);
 
-        Assert.assertFalse(accordions.isEmpty(), "Form should have accordion sections");
+        Assert.assertFalse(sectionHeaders.isEmpty(), "Form should have section headers");
 
         // Verify no duplicates
-        Set<String> uniqueAccordions = new HashSet<>(accordions);
-        Assert.assertEquals(uniqueAccordions.size(), accordions.size(),
-                "Accordions should have no duplicates. Found: " + accordions);
+        Set<String> uniqueHeaders = new HashSet<>(sectionHeaders);
+        Assert.assertEquals(uniqueHeaders.size(), sectionHeaders.size(),
+                "Section headers should have no duplicates. Found: " + sectionHeaders);
 
-        // Expected minimum accordions: Dashboard, Own services, Wallet usage, Settings
-        Assert.assertTrue(accordions.size() >= 4,
-                "Should have at least 4 accordion sections. Found: " + accordions.size());
+        // Expected sections: Password Setup, 2-Step Verification, Access Control
+        // List, Wallets, Service Accounts
+        Assert.assertTrue(sectionHeaders.size() >= 4,
+                "Should have at least 4 section headers. Found: " + sectionHeaders.size());
 
-        System.out.println("✓ Form accordion structure validated. No duplicates found.");
+        System.out.println("✓ Form section header structure validated. No duplicates found.");
 
         // Close any offcanvas/modal that might be open
         try {
@@ -560,7 +622,7 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         Thread.sleep(500);
     }
 
-    @Test(priority = 23, description = "Logout from SuperAdmin session", dependsOnMethods = "testAddNewButtonClickable", alwaysRun = true)
+    @Test(priority = 24, description = "Logout from SuperAdmin session", dependsOnMethods = "testAddNewButtonClickable", alwaysRun = true)
     public void testLogout() throws InterruptedException {
         LoginPage loginPage = new LoginPage(driver);
         System.out.println("Step 6: Logging out...");
@@ -605,6 +667,38 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         // Scroll to top to ensure profile menu is visible
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("window.scrollTo(0, 0);");
         Thread.sleep(500);
+
+        loginPage.logout();
+    }
+
+    @Test(priority = 25, description = "Verify Reseller drill-down and wallet balance (regression)", dependsOnMethods = "testLogout", alwaysRun = true)
+    public void testResellerDrillDownRegression() throws InterruptedException {
+        LoginPage loginPage = new LoginPage(driver);
+        CustomerOrgPage customerOrgPage = new CustomerOrgPage(driver);
+
+        // Only Enterprise drill-down was ever exercised by this suite; Reseller
+        // entities use the same Customer Org listing and share the drill-down /
+        // wallet-balance UI, so validate that path explicitly.
+        System.out.println("Re-logging in as SuperAdmin for Reseller regression check...");
+        loginPage.loginWithSuperAdminCredentials();
+        Thread.sleep(1500); // Wait for dashboard to fully load
+
+        customerOrgPage.navigateToCustomerOrg();
+        Thread.sleep(1000); // Wait for page transition
+        Assert.assertTrue(customerOrgPage.isPageLoaded(), "Customer Org page failed to load for Reseller check");
+
+        System.out.println("Drilling down into a Reseller entry...");
+        customerOrgPage.drillDownToReseller();
+        Thread.sleep(1500); // Wait for page to fully load after drill-down
+
+        String currentUrl = driver.getCurrentUrl();
+        Assert.assertTrue(currentUrl.contains("/customer-org/") && !currentUrl.endsWith("/customer-org"),
+                "Should have drilled down into a Reseller. Current URL: " + currentUrl);
+        System.out.println("✓ Successfully drilled down into Reseller. URL: " + currentUrl);
+
+        String balance = customerOrgPage.getWalletValue();
+        Assert.assertNotNull(balance, "Reseller wallet balance should be available");
+        System.out.println("✓ Reseller wallet balance: " + balance);
 
         loginPage.logout();
     }

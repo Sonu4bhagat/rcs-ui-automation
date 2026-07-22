@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
-<suite name="RCS Automation Test Suite" verbose="1" parallel="tests" thread-count="5">
+<suite name="RCS Automation Test Suite" verbose="1">
     <listeners>
         <listener class-name="utils.AnnotationTransformer"/>
     </listeners>
@@ -101,6 +101,12 @@
     <test name="Super Admin Service Node SSO" preserve-order="true">
         <classes>
             <class name="tests.SuperAdminServiceNodeSSOTest"/>
+        </classes>
+    </test>
+
+    <test name="Reseller Dashboard My Wallets" preserve-order="true">
+        <classes>
+            <class name="tests.ResellerDashboardMyWalletsTest"/>
         </classes>
     </test>
 

@@ -111,7 +111,6 @@ public class NavigationPage {
         System.out.println("Assistants page loaded successfully.");
     }
     public void navigateToAssistantList() {
-        clickOpenButton();
         clickServicesTab();
         clickViewDetails();
         clickSSORedirectionIcon(); // now waits for SSO
@@ -124,7 +123,6 @@ public class NavigationPage {
 
 
     public void navigateToMediaLibrary() {
-        clickOpenButton();
         clickServicesTab();
         clickViewDetails();
         clickSSORedirectionIcon();

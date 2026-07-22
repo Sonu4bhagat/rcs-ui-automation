@@ -42,11 +42,22 @@ public class EnterpriseWalletPage {
             walletMenu.click();
             System.out.println("Clicked Wallet menu item");
 
+            // Click the sub-menu 'Wallet Usage'
+            try {
+                WebElement usageMenu = wait.until(ExpectedConditions.elementToBeClickable(
+                        By.xpath("//a[contains(., 'Wallet Usage')] | //span[contains(., 'Wallet Usage')]")));
+                usageMenu.click();
+                System.out.println("Clicked Wallet Usage sub-menu");
+                Thread.sleep(2000);
+            } catch (Exception e) {
+                System.out.println("Wallet Usage sub-menu not found or not clickable: " + e.getMessage());
+            }
+
             wait.until(ExpectedConditions.or(
                     ExpectedConditions.urlContains("wallet"),
                     ExpectedConditions.visibilityOfElementLocated(EnterpriseWalletPageLocators.WALLET_BALANCE)));
 
-            // First check URL contains wallet-management
+            // First check URL contains wallet-management or wallet
             String currentUrl = driver.getCurrentUrl();
             System.out.println("Current URL after click: " + currentUrl);
 

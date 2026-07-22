@@ -91,7 +91,11 @@ public class RolesManagementPageLocators {
     public static final By USERS_COUNT_VALUES = By.xpath(
             "//div[contains(@class, 'table-wrapper')]//tbody//tr//td[2]//a//strong");
 
-    // Get Users count link by role name
+    // Get Users count link by role name.
+    // NOTE: unreliable in practice - timed out against the live app even when a
+    // matching row/link genuinely existed. RolesManagementPage.clickUsersCount()
+    // no longer uses this; it re-locates the link via a row-scoped relative
+    // lookup instead. Kept only for getUsersCountValueByRoleName() below.
     public static By getUsersCountByRoleName(String roleName) {
         return By.xpath(
                 "//div[contains(@class, 'table-wrapper')]//tbody//tr[td[1][normalize-space()='" + roleName

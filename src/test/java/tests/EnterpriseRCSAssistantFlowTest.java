@@ -8,6 +8,7 @@ import org.testng.annotations.Test;
 import pages.LoginPage;
 import pages.RCSAssistantPage;
 import pages.ServicesPage;
+import utils.ScreenshotUtil;
 
 /**
  * RCS Assistant Flow Test Suite
@@ -39,6 +40,16 @@ public class EnterpriseRCSAssistantFlowTest extends BaseTest {
         loginPage = helper.getLoginPage();
         retainSession = true; // Prevent BaseTest from auto-navigating to login
     }
+
+    // NOTE: there used to be an @BeforeMethod here that recreated helper/
+    // rcsAssistantPage/etc. before every single test method. Since this whole
+    // flow is one continuous 18-step scenario against the SAME RCSAssistantPage
+    // instance (it tracks createdAssistantName/originalAssistantName/
+    // updatedAssistantName as state across steps), recreating it wiped that
+    // state before every test - e.g. testViewAssistantDetails NPE'd on a null
+    // originalAssistantName because the instance that had set it in an earlier
+    // test was already discarded. setupPages() above already does this
+    // initialization once per class; that's the only place it should happen.
 
     // ==================== 1. Login as Enterprise ====================
     @Test(priority = 1, description = "Login as Enterprise user with max service accounts")
@@ -166,6 +177,7 @@ public class EnterpriseRCSAssistantFlowTest extends BaseTest {
         System.out.println("========================================");
 
         rcsAssistantPage.uploadBrandingImages();
+        ScreenshotUtil.captureScreenshot(driver, "afterBrandingSection");
         System.out.println("✓ Branding images uploaded successfully");
     }
 
@@ -177,6 +189,7 @@ public class EnterpriseRCSAssistantFlowTest extends BaseTest {
         System.out.println("========================================");
 
         rcsAssistantPage.fillContactDetailsAndSubmit();
+        ScreenshotUtil.captureScreenshot(driver, "afterContactSection");
         System.out.println("✓ Contact details filled and assistant submitted");
     }
 

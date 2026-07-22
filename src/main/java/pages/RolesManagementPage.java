@@ -2,6 +2,7 @@ package pages;
 
 import locators.RolesManagementPageLocators;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -235,18 +236,45 @@ public class RolesManagementPage {
     }
 
     /**
-     * Click on Users count link for a specific role
-     * 
+     * Click on Users count link for a specific role.
+     * <p>
+     * Re-locates the row/link via the same relative (row-scoped) lookup that
+     * {@link #findRoleWithUsers()} already uses successfully, rather than a
+     * separate absolute xpath - the two independent lookup strategies are not
+     * guaranteed to resolve to the same element.
+     *
      * @param roleName Name of the role
      */
     public void clickUsersCount(String roleName) {
         System.out.println("Clicking Users count for role: " + roleName);
         try {
-            WebElement usersLink = wait.until(ExpectedConditions.elementToBeClickable(
-                    RolesManagementPageLocators.getUsersCountByRoleName(roleName)));
-            usersLink.click();
-            Thread.sleep(2000); // Wait for navigation
-            System.out.println("✓ Clicked Users count for '" + roleName + "'");
+            List<WebElement> rows = driver.findElements(RolesManagementPageLocators.TABLE_ROWS);
+            for (WebElement row : rows) {
+                String currentRoleName = row.findElement(By.xpath(".//td[1]")).getText().trim();
+                if (!currentRoleName.equals(roleName)) {
+                    continue;
+                }
+
+                WebElement usersCell = row.findElement(By.xpath(".//td[2]"));
+                List<WebElement> links = usersCell.findElements(By.xpath(".//a"));
+                if (links.isEmpty()) {
+                    throw new RuntimeException("Role '" + roleName + "' has no clickable Users link");
+                }
+
+                WebElement usersLink = links.get(0);
+                ((JavascriptExecutor) driver).executeScript(
+                        "arguments[0].scrollIntoView({block:'center'});", usersLink);
+                try {
+                    wait.until(ExpectedConditions.elementToBeClickable(usersLink)).click();
+                } catch (Exception e) {
+                    System.out.println("Standard click failed, using JS click for Users count link");
+                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", usersLink);
+                }
+                Thread.sleep(2000); // Wait for navigation
+                System.out.println("✓ Clicked Users count for '" + roleName + "'");
+                return;
+            }
+            throw new RuntimeException("Role '" + roleName + "' not found in current table view");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Click Users count failed", e);
