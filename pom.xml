@@ -12,7 +12,7 @@
     <name>RCS Automation Framework</name>
 
     <properties>
-        <!-- ✔ Compile project using Java 21 -->
+        <!-- Compile project using Java 17 -->
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -20,6 +20,14 @@
     </properties>
 
     <dependencies>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.36</version>
+            <scope>provided</scope>
+        </dependency>
 
         <!-- Selenium WebDriver -->
         <dependency>
@@ -144,13 +152,16 @@
     <build>
         <plugins>
 
-            <!-- ✔ Compile using Java 21 -->
+            <!-- ✔ Compile using Java 17 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
                     <release>17</release>
+                    <compilerArgs>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
 
