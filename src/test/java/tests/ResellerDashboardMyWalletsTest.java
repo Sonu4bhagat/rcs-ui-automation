@@ -21,6 +21,7 @@ public class ResellerDashboardMyWalletsTest extends BaseTest {
 
     // State carried across the Fund Transfer test sequence (TC10-TC13)
     private String selectedSourceWallet;
+    private String selectedSourceWalletType;
     private String selectedDestinationWallet;
     private double sourceBalanceBeforeTransfer;
     private double destinationBalanceBeforeTransfer;
@@ -352,9 +353,10 @@ public class ResellerDashboardMyWalletsTest extends BaseTest {
         Assert.assertTrue(selected, "Should be able to select the source wallet option");
 
         selectedSourceWallet = walletPage.extractWalletNameFromOption(bestOption);
+        selectedSourceWalletType = walletPage.extractTypeFromOption(bestOption);
         sourceBalanceBeforeTransfer = bestBalance;
-        System.out.println("Source wallet selected: " + selectedSourceWallet + " (balance before: "
-                + sourceBalanceBeforeTransfer + ")");
+        System.out.println("Source wallet selected: " + selectedSourceWallet + " (type: " + selectedSourceWalletType
+                + ", balance before: " + sourceBalanceBeforeTransfer + ")");
 
         try {
             Thread.sleep(500);
@@ -381,19 +383,31 @@ public class ResellerDashboardMyWalletsTest extends BaseTest {
         System.out.println("Destination wallet options: " + options);
         Assert.assertFalse(options.isEmpty(), "Destination wallet dropdown should list eligible wallets");
 
-        // Pick any option that isn't the already-selected source wallet
+        // Pick an option that (a) isn't the already-selected source wallet, and
+        // (b) has the SAME wallet type as the source - confirmed live, the app
+        // rejects a transfer between different types ("Source and destination
+        // wallet types must be the same for transfer (Prepaid to Prepaid or
+        // Postpaid to Postpaid)"), leaving the Submit button permanently
+        // disabled with no way to proceed.
         String destOption = null;
         for (String option : options) {
             String name = walletPage.extractWalletNameFromOption(option);
-            if (!name.equals(selectedSourceWallet)) {
+            String type = walletPage.extractTypeFromOption(option);
+            if (!name.equals(selectedSourceWallet) && type.equalsIgnoreCase(selectedSourceWalletType)) {
                 destOption = option;
                 break;
             }
         }
-        Assert.assertNotNull(destOption, "There should be at least one destination wallet different from the source");
-        System.out.println("Selecting destination wallet: '" + destOption + "'");
+        Assert.assertNotNull(destOption, "There should be at least one destination wallet different from the "
+                + "source with a matching wallet type (" + selectedSourceWalletType + ")");
+        System.out.println("Selecting destination wallet (matching type '" + selectedSourceWalletType + "'): '"
+                + destOption + "'");
 
         double destBalance = walletPage.extractBalanceFromOption(destOption);
+        String destType = walletPage.extractTypeFromOption(destOption);
+        Assert.assertEquals(destType, selectedSourceWalletType,
+                "Destination wallet type must match source wallet type for a valid transfer");
+
         boolean selected = walletPage.selectOpenDropdownOptionByText(destOption);
         Assert.assertTrue(selected, "Should be able to select the destination wallet option");
 

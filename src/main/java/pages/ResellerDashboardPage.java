@@ -113,19 +113,37 @@ public class ResellerDashboardPage {
         return headers;
     }
 
+    /**
+     * Reads a wallet table cell's text, waiting for it to have non-empty text
+     * (not just be visible). Angular renders the row skeleton (empty &lt;td&gt;)
+     * before async-populating its text, so waiting only for visibility can
+     * return "" immediately if this runs right after a navigation/refresh -
+     * e.g. straight after returning from the wallet's Usage page in TC05.
+     */
     public String getWalletCellText(int row, int column) {
+        By locator = ResellerDashboardPageLocators.getWalletCellByRowAndColumn(row, column);
         try {
-            return driver.findElement(ResellerDashboardPageLocators.getWalletCellByRowAndColumn(row, column))
-                    .getText().trim();
+            wait.until(d -> {
+                try {
+                    return !d.findElement(locator).getText().trim().isEmpty();
+                } catch (Exception e) {
+                    return false;
+                }
+            });
+            return driver.findElement(locator).getText().trim();
         } catch (Exception e) {
+            System.out.println("Could not read wallet cell (row=" + row + ", column=" + column + "): "
+                    + e.getMessage());
             return "";
         }
     }
 
     public String getWalletStatus(int row) {
         try {
-            return driver.findElement(ResellerDashboardPageLocators.getWalletStatusByRow(row)).getText().trim();
+            return wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    ResellerDashboardPageLocators.getWalletStatusByRow(row))).getText().trim();
         } catch (Exception e) {
+            System.out.println("Could not read wallet status for row " + row + ": " + e.getMessage());
             return "N/A";
         }
     }
@@ -356,6 +374,18 @@ public class ResellerDashboardPage {
         return parts.length > 1 ? parseBalance(parts[1]) : 0.0;
     }
 
+    /**
+     * Extracts the wallet type (Prepaid/Postpaid) from an option formatted
+     * "WalletName - <balance> - Type". Confirmed live: the app rejects a
+     * transfer where source and destination types differ ("Source and
+     * destination wallet types must be the same for transfer"), so callers
+     * must match on this when picking a destination.
+     */
+    public String extractTypeFromOption(String optionText) {
+        String[] parts = optionText.split(" - ");
+        return parts.length > 2 ? parts[2].trim() : "";
+    }
+
     public String getSelectedSourceWalletText() {
         return getSelectedDropdownText(ResellerDashboardPageLocators.SOURCE_WALLET_DROPDOWN);
     }
@@ -394,8 +424,29 @@ public class ResellerDashboardPage {
     }
 
     public void clickFundTransferSubmit() {
-        WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(
-                ResellerDashboardPageLocators.FUND_TRANSFER_SUBMIT_BUTTON));
+        // The submit button's async validation has occasionally needed more than
+        // 15s to settle (observed once in a real run, though it typically enables
+        // within a couple seconds) - retry once with a longer wait before giving
+        // up, same class of fix as the RCS Assistant form's validation lag.
+        WebElement btn = null;
+        for (int attempt = 1; attempt <= 2 && btn == null; attempt++) {
+            try {
+                int timeoutSeconds = attempt == 1 ? 15 : 30;
+                btn = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds)).until(
+                        ExpectedConditions.elementToBeClickable(
+                                ResellerDashboardPageLocators.FUND_TRANSFER_SUBMIT_BUTTON));
+            } catch (Exception e) {
+                if (attempt == 2) {
+                    System.out.println("Fund Transfer submit button never became clickable - dumping modal state:");
+                    dumpFundTransferModalState();
+                    String shot = utils.ScreenshotUtil.captureScreenshot(driver, "fundTransferSubmitStuckDisabled");
+                    System.out.println("Diagnostic screenshot saved to: " + shot);
+                    throw e;
+                }
+                System.out.println("Submit button not yet clickable after attempt " + attempt
+                        + ", retrying with a longer wait...");
+            }
+        }
         try {
             btn.click();
         } catch (Exception e) {
@@ -408,6 +459,43 @@ public class ResellerDashboardPage {
         }
     }
 
+    /** Diagnostic dump of the Fund Transfer modal's field values when Submit stays disabled. */
+    private void dumpFundTransferModalState() {
+        try {
+            System.out.println("  Source wallet field: '" + getSelectedSourceWalletText() + "'");
+            System.out.println("  Destination wallet field: '" + getSelectedDestinationWalletText() + "'");
+            try {
+                WebElement amountField = driver.findElement(ResellerDashboardPageLocators.TRANSFER_AMOUNT_INPUT);
+                System.out.println("  Amount field value: '" + amountField.getAttribute("value") + "'");
+            } catch (Exception e) {
+                System.out.println("  Amount field not found: " + e.getMessage());
+            }
+            try {
+                WebElement descField = driver.findElement(ResellerDashboardPageLocators.TRANSFER_DESCRIPTION_INPUT);
+                System.out.println("  Description field value: '" + descField.getAttribute("value") + "'");
+            } catch (Exception e) {
+                System.out.println("  Description field not found: " + e.getMessage());
+            }
+            List<WebElement> invalidFields = driver.findElements(By.xpath("//*[contains(@class,'ng-invalid')]"));
+            System.out.println("  Found " + invalidFields.size() + " ng-invalid element(s):");
+            for (WebElement f : invalidFields) {
+                System.out.println("    tag=" + f.getTagName() + " formcontrolname="
+                        + f.getAttribute("formcontrolname") + " class=" + f.getAttribute("class"));
+            }
+            List<WebElement> errorTexts = driver.findElements(By.xpath(
+                    "//*[contains(@class,'error') or contains(@class,'invalid-feedback')]"));
+            System.out.println("  Found " + errorTexts.size() + " error-styled element(s):");
+            for (WebElement e : errorTexts) {
+                String text = e.getText().trim();
+                if (!text.isEmpty()) {
+                    System.out.println("    '" + text + "'");
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("  Error dumping modal state: " + e.getMessage());
+        }
+    }
+
     public boolean isTransferSuccessMessageDisplayed() {
         return isElementVisible(ResellerDashboardPageLocators.TRANSFER_SUCCESS_MESSAGE);
     }
@@ -417,39 +505,46 @@ public class ResellerDashboardPage {
      * from the wallet listing table by matching its name in column 1 and
      * reading column 6 ("Current Balance (₹)" - confirmed live table order:
      * Wallet Name, Wallet Type, Wallet Mode, Created On, Service, Current
-     * Balance, Usage, Status, Action). Retries once on a stale element
-     * reference, since the table can re-render shortly after navigation/reload.
+     * Balance, Usage, Status, Action).
+     * <p>
+     * Polls (via wait.until) until the matching row's balance cell has
+     * non-empty text, not just until the row exists - like getWalletCellText,
+     * Angular can render the row skeleton with an empty balance cell for a
+     * moment (especially right after a transfer, while the balance recalculates)
+     * before the real value populates. A stale element reference during any
+     * single poll just fails that poll silently; wait.until retries on its own.
      */
     public String getWalletBalanceByName(String walletName) {
-        for (int attempt = 1; attempt <= 2; attempt++) {
-            try {
-                waitForWalletData();
-                List<WebElement> rows = driver.findElements(ResellerDashboardPageLocators.WALLET_TABLE_ROWS);
-                for (WebElement row : rows) {
-                    List<WebElement> cells = row.findElements(By.xpath(".//td"));
-                    if (cells.size() < 6) {
-                        continue;
-                    }
-                    String name = cells.get(0).getText().trim();
-                    if (name.equalsIgnoreCase(walletName)) {
-                        return cells.get(5).getText().trim();
-                    }
-                }
-                return "";
-            } catch (StaleElementReferenceException e) {
-                System.out.println("Stale element reading balance for '" + walletName + "' (attempt " + attempt
-                        + "), retrying...");
+        final String[] result = new String[1];
+        try {
+            waitForWalletData();
+            wait.until(d -> {
                 try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
+                    List<WebElement> rows = d.findElements(ResellerDashboardPageLocators.WALLET_TABLE_ROWS);
+                    for (WebElement row : rows) {
+                        List<WebElement> cells = row.findElements(By.xpath(".//td"));
+                        if (cells.size() < 6) {
+                            continue;
+                        }
+                        String name = cells.get(0).getText().trim();
+                        if (name.equalsIgnoreCase(walletName)) {
+                            String balance = cells.get(5).getText().trim();
+                            if (!balance.isEmpty()) {
+                                result[0] = balance;
+                                return true;
+                            }
+                            return false;
+                        }
+                    }
+                    return false;
+                } catch (StaleElementReferenceException e) {
+                    return false;
                 }
-            } catch (Exception e) {
-                System.out.println("Error reading wallet balance for '" + walletName + "': " + e.getMessage());
-                return "";
-            }
+            });
+        } catch (Exception e) {
+            System.out.println("Error reading wallet balance for '" + walletName + "': " + e.getMessage());
         }
-        return "";
+        return result[0] != null ? result[0] : "";
     }
 
     public double parseBalance(String balanceText) {

@@ -5,6 +5,8 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import utils.ConfigReader;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -31,6 +33,17 @@ public class DriverFactory {
         // Common options for both modes
         options.addArguments("--disable-blink-features=AutomationControlled");
         options.setExperimentalOption("excludeSwitches", new String[] { "enable-automation" });
+
+        // Global: suppress Chrome's native "Save password?" bubble after every
+        // login. This is a browser-chrome-level UI element, not part of the page
+        // DOM, so it can't be located/closed via Selenium locators after the
+        // fact - disabling the password manager here is the only reliable way
+        // to prevent it from ever appearing, for every test in the suite.
+        Map<String, Object> prefs = new HashMap<>();
+        prefs.put("credentials_enable_service", false);
+        prefs.put("profile.password_manager_enabled", false);
+        prefs.put("profile.password_manager_leak_detection", false);
+        options.setExperimentalOption("prefs", prefs);
 
         // Check if headless mode is enabled
         if (isHeadlessMode()) {
