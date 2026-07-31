@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'SUITE_FILE', choices: ['testng.xml', 'enterprise.xml', 'superadmin.xml'], description: 'Select TestNG suite to run')
+        choice(name: 'TEST_TO_RUN', choices: ['LoginTest', 'testng.xml', 'enterprise.xml', 'superadmin.xml'], description: 'Select specific test class (e.g. LoginTest) or TestNG XML suite file')
         booleanParam(name: 'HEADLESS', defaultValue: true, description: 'Run browser in headless mode')
     }
 
@@ -39,8 +39,15 @@ pipeline {
         stage('Execute Automation Suite') {
             steps {
                 timeout(time: 180, unit: 'MINUTES') {
-                    echo "Running tests using suite: ${params.SUITE_FILE} (Headless: ${params.HEADLESS})..."
-                    bat "mvn test -DsuiteXmlFile=${params.SUITE_FILE} -Dbrowser.headless=${params.HEADLESS}"
+                    script {
+                        if (params.TEST_TO_RUN.endsWith('.xml')) {
+                            echo "Executing TestNG Suite File: ${params.TEST_TO_RUN} (Headless: ${params.HEADLESS})..."
+                            bat "mvn test -DsuiteXmlFile=${params.TEST_TO_RUN} -Dbrowser.headless=${params.HEADLESS}"
+                        } else {
+                            echo "Executing Test Class: ${params.TEST_TO_RUN} (Headless: ${params.HEADLESS})..."
+                            bat "mvn test -Dtest=${params.TEST_TO_RUN} -Dbrowser.headless=${params.HEADLESS}"
+                        }
+                    }
                 }
             }
         }
