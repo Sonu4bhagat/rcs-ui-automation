@@ -108,22 +108,24 @@ pipeline {
                 def statusEmoji = failedTests > 0 ? '❌' : '✅'
                 def failureSummary = failedTestNames ? "\nFAILED TESTS:\n------------------------------------------\n" + failedTestNames.unique().take(30).join("\n") + (failedTestNames.size() > 30 ? "\n... and ${failedTestNames.size() - 30} more" : "") : ""
                 
-                // Simple pass rate calculation for sandbox compatibility
-                def passRate = 0
+                // Pass rate calculation
+                def passRateStr = "0%"
                 if (totalTests > 0) {
-                    passRate = (passedTests * 100) / totalTests
+                    def pr = (passedTests * 100.0) / totalTests
+                    passRateStr = String.format("%.2f", pr) + "%"
                 }
 
                 def reportBaseUrl = env.BUILD_URL + "artifact/"
                 echo "DEBUG: Report Base URL is ${reportBaseUrl}"
                 
                 try {
-                    echo "DEBUG: Attempting to send email to aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com"
-                    mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
-                         subject: "${statusEmoji} Jenkins: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${calculatedStatus}",
-                         body: """
+                    echo "DEBUG: Attempting to send email via emailext to aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com"
+                    emailext to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
+                             subject: "${statusEmoji} Jenkins: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${calculatedStatus}",
+                             mimeType: 'text/plain; charset=UTF-8',
+                             body: """
 ==========================================
-   RCS Automation Test Report  ${statusEmoji}
+   RCS Automation Test Report ${statusEmoji}
 ==========================================
 
 BUILD INFORMATION
@@ -141,7 +143,7 @@ Total Tests  : ${totalTests}
 Passed       : ${passedTests} ✅
 Failed       : ${failedTests} ❌
 Skipped      : ${skippedTests} ⏭️
-Pass Rate    : ${passRate}%
+Pass Rate    : ${passRateStr}
 ${failureSummary}
 
 ==========================================
@@ -158,11 +160,13 @@ ${env.BUILD_URL}console
 
 ==========================================
 This is an automated email from Jenkins
-==========================================
+------------------------------------------
 """
-                    echo "DEBUG: Email sent successfully."
                 } catch (Exception e) {
-                    echo "ERROR: Failed to send email: ${e.message}"
+                    echo "ERROR: Failed to send email via emailext: ${e.message}"
+                    mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
+                         subject: "Jenkins: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${calculatedStatus}",
+                         body: "Test Results - Total: ${totalTests}, Passed: ${passedTests}, Failed: ${failedTests}, Skipped: ${skippedTests}. View: ${env.BUILD_URL}"
                 }
             }
         }
