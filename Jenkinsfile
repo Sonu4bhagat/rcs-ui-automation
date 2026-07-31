@@ -105,7 +105,10 @@ pipeline {
                 echo "DEBUG: Results -> Total: ${totalTests}, Passed: ${passedTests}, Failed: ${failedTests}"
                 
                 def calculatedStatus = failedTests > 0 ? "FAILURE" : (totalTests > 0 ? "SUCCESS" : currentBuild.currentResult)
-                def statusEmoji = failedTests > 0 ? '❌' : '✅'
+                def emojiPassed = '\u2705'
+                def emojiFailed = '\u274C'
+                def emojiSkipped = '\u23ED'
+                def statusEmoji = failedTests > 0 ? emojiFailed : emojiPassed
                 def failureSummary = failedTestNames ? "\nFAILED TESTS:\n------------------------------------------\n" + failedTestNames.unique().take(30).join("\n") + (failedTestNames.size() > 30 ? "\n... and ${failedTestNames.size() - 30} more" : "") : ""
                 
                 // Pass rate calculation
@@ -140,9 +143,9 @@ Build URL    : ${env.BUILD_URL}
          TEST EXECUTION SUMMARY
 ==========================================
 Total Tests  : ${totalTests}
-Passed       : ${passedTests} ✅
-Failed       : ${failedTests} ❌
-Skipped      : ${skippedTests} ⏭️
+Passed       : ${passedTests} ${emojiPassed}
+Failed       : ${failedTests} ${emojiFailed}
+Skipped      : ${skippedTests} ${emojiSkipped}
 Pass Rate    : ${passRateStr}
 ${failureSummary}
 
