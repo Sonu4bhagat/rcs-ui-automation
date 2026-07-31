@@ -138,5 +138,6 @@ public class BaseTest {
     @AfterSuite
     public void tearDownReport() {
         extent.flush();
+        utils.EmailReportSender.sendReportEmail();
     }
 }

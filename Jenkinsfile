@@ -1,43 +1,49 @@
 pipeline {
     agent any
 
-    tools {
-        jdk 'JDK_17'
-        maven 'Maven_3'
+    parameters {
+        choice(name: 'SUITE_FILE', choices: ['testng.xml', 'enterprise.xml', 'superadmin.xml'], description: 'Select TestNG suite to run')
+        booleanParam(name: 'HEADLESS', defaultValue: true, description: 'Run browser in headless mode')
     }
 
     environment {
-        MAVEN_OPTS = "-Xmx2048m -Xms512m"
+        MAVEN_OPTS = "-Xmx2048m --add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED"
     }
 
     stages {
-        stage('Initialize') {
-            steps {
-                echo 'Cleaning up environment...'
-                bat 'TASKKILL /F /IM chromedriver.exe /T /FI "status eq running" || echo "No chromedriver found."'
-                echo 'Cleaning and Compiling project...'
-                bat 'mvn clean compile -DskipTests'
-                echo 'Checking connectivity to target URL...'
-                bat 'curl -I https://stagingvault.smartping.io/login || echo "Warning: Could not reach target URL"'
-            }
-        }
-
         stage('Checkout Code') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/Sonu4bhagat/rcs-ui-automation.git'
+                echo 'Checking out source code...'
+                git branch: 'main', url: 'https://github.com/Sonu4bhagat/rcs-ui-automation.git'
             }
         }
 
-        stage('Run Full Suite (Parallel)') {
+        stage('Initialize Environment') {
+            steps {
+                echo 'Cleaning up leftover processes...'
+                bat 'TASKKILL /F /IM chromedriver.exe /T /FI "status eq running" 2>NUL || echo No running chromedriver processes found.'
+                bat 'TASKKILL /F /IM chrome.exe /T /FI "status eq running" 2>NUL || echo No running chrome processes found.'
+                echo 'Checking Java and Maven versions...'
+                bat 'java -version'
+                bat 'mvn -version'
+            }
+        }
+
+        stage('Compile Project') {
+            steps {
+                echo 'Cleaning and Compiling project...'
+                bat 'mvn clean compile -DskipTests'
+            }
+        }
+
+        stage('Execute Automation Suite') {
             steps {
                 timeout(time: 180, unit: 'MINUTES') {
-                    echo 'Running all tests from testng.xml in parallel...'
-                    bat 'mvn test -DsuiteXmlFile=testng.xml -Dbrowser.headless=true'
+                    echo "Running tests using suite: ${params.SUITE_FILE} (Headless: ${params.HEADLESS})..."
+                    bat "mvn test -DsuiteXmlFile=${params.SUITE_FILE} -Dbrowser.headless=${params.HEADLESS}"
                 }
             }
         }
-
     }
 
     post {
@@ -106,7 +112,7 @@ pipeline {
                 
                 try {
                     echo "DEBUG: Attempting to send email to aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com"
-                    mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com, rahul.yadav@altiquence.com',
+                    mail to: 'aryan.sonu7562@gmail.com, sonu.bhagat@altiquence.com',
                          subject: "${statusEmoji} Jenkins: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${calculatedStatus}",
                          body: """
 ==========================================
