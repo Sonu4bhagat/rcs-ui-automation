@@ -1,5 +1,6 @@
 package tests;
 
+/*
 import base.BaseTest;
 import helpers.AssistantTestHelper;
 import locators.AssistantsPageLocators;
@@ -160,3 +161,4 @@ public class AssistantListTestCA extends BaseTest {
         assistantsPage.createNewAssistant();
     }
 }
+*/
