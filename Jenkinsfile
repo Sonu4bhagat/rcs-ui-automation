@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'TEST_TO_RUN', choices: ['LoginTest', 'testng.xml', 'enterprise.xml', 'superadmin.xml'], description: 'Select specific test class (e.g. LoginTest) or TestNG XML suite file')
+        choice(name: 'TEST_TO_RUN', choices: ['testng.xml', 'enterprise.xml', 'superadmin.xml', 'LoginTest'], description: 'Select specific test class (e.g. LoginTest) or TestNG XML suite file')
         booleanParam(name: 'HEADLESS', defaultValue: true, description: 'Run browser in headless mode')
     }
 

@@ -67,6 +67,18 @@
             <class name="tests.EnterpriseRCSAssistantFlowTest"/>
         </classes>
     </test>
+
+    <test name="Enterprise Assistant List CA" preserve-order="true">
+        <classes>
+            <class name="tests.AssistantListTestCA"/>
+        </classes>
+    </test>
+
+    <test name="Media Library" preserve-order="true">
+        <classes>
+            <class name="tests.MediaLibraryTest"/>
+        </classes>
+    </test>
     
     <test name="Super Admin Customer Org" preserve-order="true">
         <classes>
