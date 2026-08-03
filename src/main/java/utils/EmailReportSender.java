@@ -8,6 +8,8 @@ import javax.mail.internet.MimeMultipart;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,22 +52,111 @@ public class EmailReportSender {
                 }
             });
 
-            Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(senderEmail, "RCS Automation CI/CD"));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipients));
+            // Parse environment variables for Jenkins build information
+            String jobName = System.getenv("JOB_NAME");
+            if (jobName == null || jobName.isEmpty()) jobName = "RCS_Automation_Pipeline";
 
-            // Parse ExtentReport HTML or default summary for email body
-            File reportFile = new File("test-output/ExtentReport.html");
-            String bodyText = generateHtmlSummary();
+            String buildNumber = System.getenv("BUILD_NUMBER");
+            if (buildNumber == null || buildNumber.isEmpty()) buildNumber = "1";
+
+            String buildUrl = System.getenv("BUILD_URL");
+            if (buildUrl == null || buildUrl.isEmpty()) {
+                buildUrl = "http://localhost:8080/job/" + jobName + "/" + buildNumber + "/";
+            }
+
+            // Parse test results from surefire report
+            int totalTests = 0;
+            int passedTests = 0;
+            int failedTests = 0;
+            int skippedTests = 0;
+            List<String> failedTestNames = new ArrayList<>();
+
+            File resultsFile = new File("target/surefire-reports/testng-results.xml");
+            if (resultsFile.exists()) {
+                try {
+                    String content = new String(Files.readAllBytes(Paths.get(resultsFile.getAbsolutePath())));
+                    Matcher totalMatch = Pattern.compile("total=\"(\\d+)\"").matcher(content);
+                    Matcher passedMatch = Pattern.compile("passed=\"(\\d+)\"").matcher(content);
+                    Matcher failedMatch = Pattern.compile("failed=\"(\\d+)\"").matcher(content);
+                    Matcher skippedMatch = Pattern.compile("skipped=\"(\\d+)\"").matcher(content);
+
+                    if (totalMatch.find()) totalTests = Integer.parseInt(totalMatch.group(1));
+                    if (passedMatch.find()) passedTests = Integer.parseInt(passedMatch.group(1));
+                    if (failedMatch.find()) failedTests = Integer.parseInt(failedMatch.group(1));
+                    if (skippedMatch.find()) skippedTests = Integer.parseInt(skippedMatch.group(1));
+
+                    Matcher failMethodMatch = Pattern.compile("test-method status=\"FAIL\" name=\"(\\w+)\"").matcher(content);
+                    while (failMethodMatch.find()) {
+                        failedTestNames.add(failMethodMatch.group(1));
+                    }
+                } catch (Exception e) {
+                    System.err.println("[WARN] Could not parse testng-results.xml: " + e.getMessage());
+                }
+            }
+
+            String calculatedStatus = (failedTests > 0) ? "FAILURE" : (totalTests > 0 ? "SUCCESS" : "SUCCESS");
+            String statusEmoji = (failedTests > 0) ? "❌" : "✅";
+            String emojiPassed = "✅";
+            String emojiFailed = "❌";
+            String emojiSkipped = "⏩";
+
+            String passRateStr = "0.00%";
+            if (totalTests > 0) {
+                double pr = (passedTests * 100.0) / totalTests;
+                passRateStr = String.format("%.2f", pr) + "%";
+            }
+
+            StringBuilder failureSummary = new StringBuilder();
+            if (!failedTestNames.isEmpty()) {
+                failureSummary.append("\nFAILED TESTS:\n------------------------------------------\n");
+                for (String name : failedTestNames) {
+                    failureSummary.append(name).append("\n");
+                }
+            }
+
+            String reportBaseUrl = buildUrl.endsWith("/") ? buildUrl + "artifact/" : buildUrl + "/artifact/";
+
+            StringBuilder bodyText = new StringBuilder();
+            bodyText.append("==========================================\n");
+            bodyText.append("   RCS Automation Test Report ").append(statusEmoji).append("\n");
+            bodyText.append("==========================================\n\n");
+            bodyText.append("BUILD INFORMATION\n");
+            bodyText.append("------------------------------------------\n");
+            bodyText.append("Job Name     : ").append(jobName).append("\n");
+            bodyText.append("Build Number : #").append(buildNumber).append("\n");
+            bodyText.append("Status       : ").append(calculatedStatus).append("\n");
+            bodyText.append("Build URL    : ").append(buildUrl).append("\n\n");
+            bodyText.append("==========================================\n");
+            bodyText.append("          TEST EXECUTION SUMMARY\n");
+            bodyText.append("==========================================\n");
+            bodyText.append("Total Tests  : ").append(totalTests).append("\n");
+            bodyText.append("Passed       : ").append(passedTests).append(" ").append(emojiPassed).append("\n");
+            bodyText.append("Failed       : ").append(failedTests).append(" ").append(emojiFailed).append("\n");
+            bodyText.append("Skipped      : ").append(skippedTests).append(" ").append(emojiSkipped).append("\n");
+            bodyText.append("Pass Rate    : ").append(passRateStr).append("\n");
+            bodyText.append(failureSummary).append("\n");
+            bodyText.append("==========================================\n");
+            bodyText.append("             VIEW REPORTS\n");
+            bodyText.append("==========================================\n");
+            bodyText.append("Extent Report (Detailed):\n").append(reportBaseUrl).append("test-output/ExtentReport.html\n\n");
+            bodyText.append("TestNG Index Report:\n").append(reportBaseUrl).append("target/surefire-reports/index.html\n\n");
+            bodyText.append("Console Output:\n").append(buildUrl.endsWith("/") ? buildUrl + "console" : buildUrl + "/console").append("\n\n");
+            bodyText.append("==========================================\n");
+            bodyText.append("This is an automated email from Jenkins\n");
+            bodyText.append("------------------------------------------\n");
+
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(senderEmail, "Jenkins"));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipients));
+            message.setSubject(statusEmoji + " Jenkins: " + jobName + " #" + buildNumber + " - " + calculatedStatus);
 
             MimeMultipart multipart = new MimeMultipart();
 
-            // Body Part
             MimeBodyPart messageBodyPart = new MimeBodyPart();
-            messageBodyPart.setContent(bodyText, "text/html; charset=utf-8");
+            messageBodyPart.setText(bodyText.toString(), "UTF-8");
             multipart.addBodyPart(messageBodyPart);
 
-            // Attachment Part (ExtentReport.html)
+            File reportFile = new File("test-output/ExtentReport.html");
             if (reportFile.exists()) {
                 MimeBodyPart attachmentPart = new MimeBodyPart();
                 attachmentPart.attachFile(reportFile);
@@ -74,7 +165,6 @@ public class EmailReportSender {
             }
 
             message.setContent(multipart);
-            message.setSubject("📊 RCS Automation Test Execution Summary Report");
 
             Transport.send(message);
             System.out.println("[SUCCESS] Test execution summary email sent successfully to: " + recipients);
@@ -82,28 +172,5 @@ public class EmailReportSender {
         } catch (Exception e) {
             System.err.println("[ERROR] Failed to send execution email report: " + e.getMessage());
         }
-    }
-
-    private static String generateHtmlSummary() {
-        StringBuilder html = new StringBuilder();
-        html.append("<html><body style='font-family: Arial, sans-serif; background-color: #f4f6f9; padding: 20px;'>");
-        html.append("<div style='max-width: 650px; margin: 0 auto; background: #ffffff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 25px;'>");
-        html.append("<h2 style='color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;'>📊 RCS Automation Execution Summary</h2>");
-        html.append("<p style='color: #555;'>Hello Team,</p>");
-        html.append("<p style='color: #555;'>The automated test suite execution triggered via <b>Jenkins Localhost CI/CD</b> has completed.</p>");
-        
-        html.append("<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>");
-        html.append("<tr style='background: #34495e; color: #fff;'><th style='padding: 10px; text-align: left;'>Property</th><th style='padding: 10px; text-align: left;'>Details</th></tr>");
-        html.append("<tr><td style='padding: 8px; border: 1px solid #ddd;'><b>Framework</b></td><td style='padding: 8px; border: 1px solid #ddd;'>RCS Automation Framework (TestNG + Selenium)</td></tr>");
-        html.append("<tr><td style='padding: 8px; border: 1px solid #ddd;'><b>Environment</b></td><td style='padding: 8px; border: 1px solid #ddd;'>Staging (https://stagingvault.smartping.io/login)</td></tr>");
-        html.append("<tr><td style='padding: 8px; border: 1px solid #ddd;'><b>Extent Report Attached</b></td><td style='padding: 8px; border: 1px solid #ddd;'>Yes (RCS_Automation_ExtentReport.html)</td></tr>");
-        html.append("</table>");
-
-        html.append("<p style='color: #555;'>Please check the attached <b>RCS_Automation_ExtentReport.html</b> for detailed step-by-step logs and screenshots.</p>");
-        html.append("<hr style='border: none; border-top: 1px solid #eee; margin-top: 20px;' />");
-        html.append("<p style='font-size: 12px; color: #888;'>This is an automated notification sent from RCS Automation Framework running on localhost Jenkins.</p>");
-        html.append("</div></body></html>");
-
-        return html.toString();
     }
 }
