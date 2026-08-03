@@ -145,7 +145,7 @@ public class EmailReportSender {
             bodyText.append("This is an automated email from Jenkins\n");
             bodyText.append("------------------------------------------\n");
 
-            Message message = new MimeMessage(session);
+            MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress(senderEmail, "Jenkins"));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipients));
             message.setSubject(statusEmoji + " Jenkins: " + jobName + " #" + buildNumber + " - " + calculatedStatus, "UTF-8");
