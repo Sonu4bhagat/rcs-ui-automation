@@ -148,7 +148,7 @@ public class EmailReportSender {
             Message message = new MimeMessage(session);
             message.setFrom(new InternetAddress(senderEmail, "Jenkins"));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipients));
-            message.setSubject(statusEmoji + " Jenkins: " + jobName + " #" + buildNumber + " - " + calculatedStatus);
+            message.setSubject(statusEmoji + " Jenkins: " + jobName + " #" + buildNumber + " - " + calculatedStatus, "UTF-8");
 
             MimeMultipart multipart = new MimeMultipart();
 
