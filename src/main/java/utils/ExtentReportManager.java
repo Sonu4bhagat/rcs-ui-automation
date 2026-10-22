@@ -2,13 +2,20 @@ package utils;
 
 import com.aventstack.extentreports.ExtentReports;
 import com.aventstack.extentreports.ExtentTest;
+import com.aventstack.extentreports.Status;
 import com.aventstack.extentreports.reporter.ExtentSparkReporter;
 import com.aventstack.extentreports.reporter.configuration.Theme;
 import com.aventstack.extentreports.reporter.configuration.ViewName;
+import org.testng.ISuite;
+import org.testng.ISuiteResult;
+import org.testng.ITestContext;
+import org.testng.ITestResult;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class ExtentReportManager {
 
@@ -146,6 +153,64 @@ public class ExtentReportManager {
 
     public static void removeTest() {
         test.remove();
+    }
+
+    /** ITestResult attribute holding the ExtentTest created for that result in BaseTest. */
+    public static final String RESULT_ATTRIBUTE = "extent.test";
+
+    /** Report name used for a test, e.g. "LoginTest :: verifyValidLogin". */
+    public static String displayName(ITestResult result) {
+        return result.getTestClass().getRealClass().getSimpleName() + " :: " + result.getMethod().getMethodName();
+    }
+
+    /**
+     * Makes the Extent report match TestNG's final results. Called once after all suites finish:
+     * - removes entries for attempts that RetryAnalyzer re-ran (only the final attempt is kept)
+     * - adds entries for tests that never reached @BeforeMethod/@AfterMethod (e.g. skipped
+     *   because @BeforeClass failed), so the report shows every test with its reason
+     * - adds an entry for each failed setup/teardown method
+     */
+    public static synchronized void reconcileWithTestNG(List<ISuite> suites) {
+        ExtentReports reports = getExtentReports();
+        for (ISuite suite : suites) {
+            for (ISuiteResult suiteResult : suite.getResults().values()) {
+                ITestContext ctx = suiteResult.getTestContext();
+                List<ITestResult> results = new ArrayList<>();
+                results.addAll(ctx.getPassedTests().getAllResults());
+                results.addAll(ctx.getFailedTests().getAllResults());
+                results.addAll(ctx.getFailedButWithinSuccessPercentageTests().getAllResults());
+                results.addAll(ctx.getSkippedTests().getAllResults());
+
+                for (ITestResult r : results) {
+                    Object logged = r.getAttribute(RESULT_ATTRIBUTE);
+                    if (r.wasRetried()) {
+                        if (logged instanceof ExtentTest) {
+                            reports.removeTest((ExtentTest) logged);
+                        }
+                        continue;
+                    }
+                    if (logged == null) {
+                        ExtentTest t = reports.createTest(displayName(r))
+                                .assignCategory(r.getTestClass().getRealClass().getSimpleName());
+                        Status status = r.getStatus() == ITestResult.SUCCESS ? Status.PASS
+                                : r.getStatus() == ITestResult.SKIP ? Status.SKIP : Status.FAIL;
+                        t.log(status, "Test " + status.toString().toLowerCase() + " (no test steps were executed)");
+                        if (r.getThrowable() != null) {
+                            t.log(status, r.getThrowable());
+                        }
+                    }
+                }
+
+                for (ITestResult r : ctx.getFailedConfigurations().getAllResults()) {
+                    ExtentTest t = reports.createTest("[Setup/Teardown] " + displayName(r))
+                            .assignCategory(r.getTestClass().getRealClass().getSimpleName());
+                    t.fail("Configuration method failed; dependent tests were skipped.");
+                    if (r.getThrowable() != null) {
+                        t.fail(r.getThrowable());
+                    }
+                }
+            }
+        }
     }
 
     /**

@@ -55,7 +55,8 @@ public class ResellerDashboardAnalyticsTest extends BaseTest {
         System.out.println("=== TC02: Verify All Service Sub-tabs ===");
 
         Assert.assertTrue(analyticsPage.hasAllServiceTabs(),
-                "All service tabs (SMS/IVR/OBD/CCS/WABA/RCS) should be available by default");
+                "All service tabs (SMS/IVR/OBD/CCS/WABA/RCS) should be available by default. Found: "
+                        + analyticsPage.getServiceTabTexts());
 
         for (String service : locators.ResellerDashboardAnalyticsPageLocators.ALL_SERVICE_NAMES) {
             analyticsPage.clickServiceTab(service);

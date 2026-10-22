@@ -33,8 +33,14 @@ public class BaseTest {
     }
 
     @BeforeMethod
-    public void beforeEachTest(Method method) {
-        test = ExtentReportManager.createTest(method.getName());
+    public void beforeEachTest(Method method, ITestResult result) {
+        String description = result.getMethod().getDescription();
+        test = (description == null || description.isEmpty())
+                ? ExtentReportManager.createTest(ExtentReportManager.displayName(result))
+                : ExtentReportManager.createTest(ExtentReportManager.displayName(result), description);
+        test.assignCategory(getClass().getSimpleName());
+        // Lets ExtentReportManager.reconcileWithTestNG drop this entry if the attempt is later retried
+        result.setAttribute(ExtentReportManager.RESULT_ATTRIBUTE, test);
         ExtentReportManager.resetStepCounter(); // Reset step counter for each new test
 
         // Robust Session Check & Self-Healing
@@ -137,7 +143,7 @@ public class BaseTest {
 
     @AfterSuite
     public void tearDownReport() {
-        extent.flush();
-        utils.EmailReportSender.sendReportEmail();
+        // Email summary is sent by utils.EmailReportSender (TestNG reporter) after the suite completes
+        ExtentReportManager.getExtentReports().flush();
     }
 }

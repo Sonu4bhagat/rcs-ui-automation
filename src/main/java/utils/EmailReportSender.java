@@ -1,37 +1,172 @@
 package utils;
 
+import org.testng.IReporter;
+import org.testng.ISuite;
+import org.testng.ISuiteResult;
+import org.testng.ITestContext;
+import org.testng.ITestResult;
+import org.testng.xml.XmlSuite;
+
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
-public class EmailReportSender {
+/**
+ * Sends the execution summary email once all suites have finished.
+ *
+ * Registered as a TestNG reporter through META-INF/services/org.testng.ITestNGListener so it
+ * runs for every execution mode (suite XML or -Dtest=ClassName). Reporters run after
+ * @AfterSuite, so results are read from TestNG's in-memory model instead of
+ * testng-results.xml (which does not exist yet at @AfterSuite time).
+ */
+public class EmailReportSender implements IReporter {
 
-    public static void sendReportEmail() {
+    private static final AtomicBoolean SENT = new AtomicBoolean(false);
+    private static final String EXTENT_REPORT = "test-output/ExtentReport.html";
+    private static final String EXTENT_ASSETS = "test-output/spark";
+    private static final long MAX_ATTACHMENT_BYTES = 20L * 1024 * 1024; // Gmail limit is 25 MB
+    private static final int MAX_ERROR_LENGTH = 250;
+
+    private static final String EMOJI_PASSED = "✅";
+    private static final String EMOJI_FAILED = "❌";
+    private static final String EMOJI_SKIPPED = "⏭";
+    private static final String LINE = "==========================================\n";
+    private static final String THIN = "------------------------------------------\n";
+
+    @Override
+    public void generateReport(List<XmlSuite> xmlSuites, List<ISuite> suites, String outputDirectory) {
+        if (!SENT.compareAndSet(false, true)) {
+            return;
+        }
         try {
+            ExtentReportManager.reconcileWithTestNG(suites);
+            ExtentReportManager.getExtentReports().flush();
+        } catch (Exception e) {
+            System.err.println("[WARN] Could not finalize Extent report before emailing: " + e.getMessage());
+        }
+        sendReportEmail(Summary.from(suites));
+    }
+
+    // ------------------------------------------------------------------ results
+
+    static final class Row {
+        final String className;
+        final String methodName;
+        final String detail;
+
+        Row(ITestResult r) {
+            this.className = r.getTestClass() != null ? simpleName(r.getTestClass().getName()) : "";
+            this.methodName = r.getMethod().getMethodName();
+            this.detail = errorMessage(r.getThrowable());
+        }
+    }
+
+    static final class ClassStats {
+        int passed, failed, skipped;
+    }
+
+    static final class Summary {
+        final List<Row> failed = new ArrayList<>();
+        final List<Row> skipped = new ArrayList<>();
+        final List<Row> configFailures = new ArrayList<>();
+        final Map<String, ClassStats> byClass = new TreeMap<>();
+        int passed;
+        Date start;
+        Date end;
+
+        int total() {
+            return passed + failed.size() + skipped.size();
+        }
+
+        static Summary from(List<ISuite> suites) {
+            Summary s = new Summary();
+            for (ISuite suite : suites) {
+                for (ISuiteResult sr : suite.getResults().values()) {
+                    ITestContext ctx = sr.getTestContext();
+                    if (ctx.getStartDate() != null && (s.start == null || ctx.getStartDate().before(s.start))) {
+                        s.start = ctx.getStartDate();
+                    }
+                    if (ctx.getEndDate() != null && (s.end == null || ctx.getEndDate().after(s.end))) {
+                        s.end = ctx.getEndDate();
+                    }
+                    for (ITestResult r : ctx.getPassedTests().getAllResults()) {
+                        s.passed++;
+                        s.stats(r).passed++;
+                    }
+                    List<ITestResult> failures = new ArrayList<>(ctx.getFailedTests().getAllResults());
+                    failures.addAll(ctx.getFailedButWithinSuccessPercentageTests().getAllResults());
+                    for (ITestResult r : failures) {
+                        s.failed.add(new Row(r));
+                        s.stats(r).failed++;
+                    }
+                    for (ITestResult r : ctx.getSkippedTests().getAllResults()) {
+                        // Attempts that RetryAnalyzer re-ran are reported as SKIP; the final attempt is counted instead.
+                        if (r.wasRetried()) continue;
+                        s.skipped.add(new Row(r));
+                        s.stats(r).skipped++;
+                    }
+                    for (ITestResult r : ctx.getFailedConfigurations().getAllResults()) {
+                        s.configFailures.add(new Row(r));
+                    }
+                }
+            }
+            Comparator<Row> order = Comparator.comparing((Row r) -> r.className).thenComparing(r -> r.methodName);
+            s.failed.sort(order);
+            s.skipped.sort(order);
+            s.configFailures.sort(order);
+            return s;
+        }
+
+        private ClassStats stats(ITestResult r) {
+            String name = r.getTestClass() != null ? simpleName(r.getTestClass().getName()) : "Unknown";
+            return byClass.computeIfAbsent(name, k -> new ClassStats());
+        }
+    }
+
+    static String status(Summary s) {
+        if (s.total() == 0) return "NO TESTS EXECUTED";
+        return (!s.failed.isEmpty() || !s.configFailures.isEmpty()) ? "FAILURE" : "SUCCESS";
+    }
+
+    static String passRate(Summary s) {
+        return s.total() == 0 ? "0.00%" : String.format("%.2f%%", s.passed * 100.0 / s.total());
+    }
+
+    // ------------------------------------------------------------------ email
+
+    public static void sendReportEmail(Summary summary) {
+        try {
+            if (!BuildInfo.isJenkinsBuild()) {
+                System.out.println("[INFO] Not running inside a Jenkins build (JOB_NAME/BUILD_NUMBER not set). Email not sent.");
+                return;
+            }
+
             String enableEmail = ConfigReader.get("email.enable");
             if (enableEmail != null && !Boolean.parseBoolean(enableEmail)) {
-                System.out.println("[INFO] Email notifications are disabled in config.properties.");
+                System.out.println("[INFO] Email notifications are disabled (email.enable=false).");
                 return;
             }
 
             String smtpHost = ConfigReader.get("email.smtp.host");
-            String smtpPort = ConfigReader.get("email.smtp.port");
+            String smtpPort = Optional.ofNullable(ConfigReader.get("email.smtp.port")).orElse("465");
             String senderEmail = ConfigReader.get("email.sender");
             String senderPassword = ConfigReader.get("email.password");
             String recipients = ConfigReader.get("email.recipients");
 
             if (smtpHost == null || senderEmail == null || senderPassword == null || recipients == null) {
-                System.out.println("[WARN] Email settings incomplete in config.properties. Skipping email trigger.");
+                System.out.println("[WARN] Email settings incomplete (host/sender/password/recipients). Skipping email.");
                 return;
             }
 
@@ -39,11 +174,13 @@ public class EmailReportSender {
 
             Properties props = new Properties();
             props.put("mail.smtp.host", smtpHost);
-            props.put("mail.smtp.port", smtpPort != null ? smtpPort : "465");
+            props.put("mail.smtp.port", smtpPort);
             props.put("mail.smtp.auth", "true");
             props.put("mail.smtp.ssl.enable", "true");
-            props.put("mail.smtp.socketFactory.port", smtpPort != null ? smtpPort : "465");
-            props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
+            props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
+            props.put("mail.smtp.connectiontimeout", "30000");
+            props.put("mail.smtp.timeout", "30000");
+            props.put("mail.smtp.writetimeout", "60000");
 
             Session session = Session.getInstance(props, new Authenticator() {
                 @Override
@@ -52,125 +189,191 @@ public class EmailReportSender {
                 }
             });
 
-            // Parse environment variables for Jenkins build information
-            String jobName = System.getenv("JOB_NAME");
-            if (jobName == null || jobName.isEmpty()) jobName = "RCS_Automation_Pipeline";
-
-            String buildNumber = System.getenv("BUILD_NUMBER");
-            if (buildNumber == null || buildNumber.isEmpty()) buildNumber = "1";
-
-            String buildUrl = System.getenv("BUILD_URL");
-            if (buildUrl == null || buildUrl.isEmpty()) {
-                buildUrl = "http://localhost:8080/job/" + jobName + "/" + buildNumber + "/";
-            }
-
-            // Parse test results from surefire report
-            int totalTests = 0;
-            int passedTests = 0;
-            int failedTests = 0;
-            int skippedTests = 0;
-            List<String> failedTestNames = new ArrayList<>();
-
-            File resultsFile = new File("target/surefire-reports/testng-results.xml");
-            if (resultsFile.exists()) {
-                try {
-                    String content = new String(Files.readAllBytes(Paths.get(resultsFile.getAbsolutePath())));
-                    Matcher totalMatch = Pattern.compile("total=\"(\\d+)\"").matcher(content);
-                    Matcher passedMatch = Pattern.compile("passed=\"(\\d+)\"").matcher(content);
-                    Matcher failedMatch = Pattern.compile("failed=\"(\\d+)\"").matcher(content);
-                    Matcher skippedMatch = Pattern.compile("skipped=\"(\\d+)\"").matcher(content);
-
-                    if (totalMatch.find()) totalTests = Integer.parseInt(totalMatch.group(1));
-                    if (passedMatch.find()) passedTests = Integer.parseInt(passedMatch.group(1));
-                    if (failedMatch.find()) failedTests = Integer.parseInt(failedMatch.group(1));
-                    if (skippedMatch.find()) skippedTests = Integer.parseInt(skippedMatch.group(1));
-
-                    Matcher failMethodMatch = Pattern.compile("test-method status=\"FAIL\" name=\"(\\w+)\"").matcher(content);
-                    while (failMethodMatch.find()) {
-                        failedTestNames.add(failMethodMatch.group(1));
-                    }
-                } catch (Exception e) {
-                    System.err.println("[WARN] Could not parse testng-results.xml: " + e.getMessage());
-                }
-            }
-
-            String calculatedStatus = (failedTests > 0) ? "FAILURE" : (totalTests > 0 ? "SUCCESS" : "SUCCESS");
-            String statusEmoji = (failedTests > 0) ? "❌" : "✅";
-            String emojiPassed = "✅";
-            String emojiFailed = "❌";
-            String emojiSkipped = "⏩";
-
-            String passRateStr = "0.00%";
-            if (totalTests > 0) {
-                double pr = (passedTests * 100.0) / totalTests;
-                passRateStr = String.format("%.2f", pr) + "%";
-            }
-
-            StringBuilder failureSummary = new StringBuilder();
-            if (!failedTestNames.isEmpty()) {
-                failureSummary.append("\nFAILED TESTS:\n------------------------------------------\n");
-                for (String name : failedTestNames) {
-                    failureSummary.append(name).append("\n");
-                }
-            }
-
-            String reportBaseUrl = buildUrl.endsWith("/") ? buildUrl + "artifact/" : buildUrl + "/artifact/";
-
-            StringBuilder bodyText = new StringBuilder();
-            bodyText.append("==========================================\n");
-            bodyText.append("   RCS Automation Test Report ").append(statusEmoji).append("\n");
-            bodyText.append("==========================================\n\n");
-            bodyText.append("BUILD INFORMATION\n");
-            bodyText.append("------------------------------------------\n");
-            bodyText.append("Job Name     : ").append(jobName).append("\n");
-            bodyText.append("Build Number : #").append(buildNumber).append("\n");
-            bodyText.append("Status       : ").append(calculatedStatus).append("\n");
-            bodyText.append("Build URL    : ").append(buildUrl).append("\n\n");
-            bodyText.append("==========================================\n");
-            bodyText.append("          TEST EXECUTION SUMMARY\n");
-            bodyText.append("==========================================\n");
-            bodyText.append("Total Tests  : ").append(totalTests).append("\n");
-            bodyText.append("Passed       : ").append(passedTests).append(" ").append(emojiPassed).append("\n");
-            bodyText.append("Failed       : ").append(failedTests).append(" ").append(emojiFailed).append("\n");
-            bodyText.append("Skipped      : ").append(skippedTests).append(" ").append(emojiSkipped).append("\n");
-            bodyText.append("Pass Rate    : ").append(passRateStr).append("\n");
-            bodyText.append(failureSummary).append("\n");
-            bodyText.append("==========================================\n");
-            bodyText.append("             VIEW REPORTS\n");
-            bodyText.append("==========================================\n");
-            bodyText.append("Extent Report (Detailed):\n").append(reportBaseUrl).append("test-output/ExtentReport.html\n\n");
-            bodyText.append("TestNG Index Report:\n").append(reportBaseUrl).append("target/surefire-reports/index.html\n\n");
-            bodyText.append("Console Output:\n").append(buildUrl.endsWith("/") ? buildUrl + "console" : buildUrl + "/console").append("\n\n");
-            bodyText.append("==========================================\n");
-            bodyText.append("This is an automated email from Jenkins\n");
-            bodyText.append("------------------------------------------\n");
+            BuildInfo build = BuildInfo.fromEnvironment();
+            String status = status(summary);
+            String statusEmoji = "SUCCESS".equals(status) ? EMOJI_PASSED : EMOJI_FAILED;
 
             MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress(senderEmail, "Jenkins"));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipients));
-            message.setSubject(statusEmoji + " Jenkins: " + jobName + " #" + buildNumber + " - " + calculatedStatus, "UTF-8");
+            message.setSubject(statusEmoji + " Jenkins: " + build.jobName + " #" + build.number + " - " + status, "UTF-8");
+            message.setSentDate(new Date());
 
-            MimeMultipart multipart = new MimeMultipart();
+            MimeMultipart multipart = new MimeMultipart("mixed");
+            MimeBodyPart bodyPart = new MimeBodyPart();
+            bodyPart.setText(buildBody(summary, build, status, statusEmoji), "UTF-8");
+            multipart.addBodyPart(bodyPart);
 
-            MimeBodyPart messageBodyPart = new MimeBodyPart();
-            messageBodyPart.setText(bodyText.toString(), "UTF-8");
-            multipart.addBodyPart(messageBodyPart);
-
-            File reportFile = new File("test-output/ExtentReport.html");
-            if (reportFile.exists()) {
-                MimeBodyPart attachmentPart = new MimeBodyPart();
-                attachmentPart.attachFile(reportFile);
-                attachmentPart.setFileName("RCS_Automation_ExtentReport.html");
-                multipart.addBodyPart(attachmentPart);
+            File reportZip = zipExtentReport();
+            if (reportZip != null) {
+                MimeBodyPart attachment = new MimeBodyPart();
+                attachment.attachFile(reportZip);
+                attachment.setFileName("RCS_Automation_ExtentReport_Build_" + build.number + ".zip");
+                multipart.addBodyPart(attachment);
             }
 
             message.setContent(multipart);
-
             Transport.send(message);
-            System.out.println("[SUCCESS] Test execution summary email sent successfully to: " + recipients);
+            System.out.println("[SUCCESS] Test execution summary email sent to: " + recipients);
 
         } catch (Exception e) {
             System.err.println("[ERROR] Failed to send execution email report: " + e.getMessage());
+            e.printStackTrace();
         }
+    }
+
+    // ------------------------------------------------------------------ build info
+
+    static final class BuildInfo {
+        String jobName;
+        String number;
+        String buildUrl;
+
+        static BuildInfo fromEnvironment() {
+            BuildInfo b = new BuildInfo();
+            b.jobName = Optional.ofNullable(env("JOB_NAME")).orElse("RCS_Automation_Pipeline");
+            b.number = Optional.ofNullable(env("BUILD_NUMBER")).orElse("local");
+            String url = env("BUILD_URL");
+            b.buildUrl = url == null ? null : (url.endsWith("/") ? url : url + "/");
+            return b;
+        }
+
+        /** Jenkins sets JOB_NAME and BUILD_NUMBER for every build step; local IDE/Maven runs do not. */
+        static boolean isJenkinsBuild() {
+            return env("JOB_NAME") != null && env("BUILD_NUMBER") != null;
+        }
+
+        private static String env(String name) {
+            String v = System.getenv(name);
+            return v == null || v.trim().isEmpty() ? null : v.trim();
+        }
+    }
+
+    // ------------------------------------------------------------------ body
+
+    private static String buildBody(Summary s, BuildInfo b, String status, String statusEmoji) {
+        StringBuilder t = new StringBuilder();
+        t.append(LINE).append("   RCS Automation Test Report ").append(statusEmoji).append("\n").append(LINE).append("\n");
+
+        t.append("BUILD INFORMATION\n").append(THIN);
+        t.append("Job Name     : ").append(b.jobName).append("\n");
+        t.append("Build Number : #").append(b.number).append("\n");
+        t.append("Status       : ").append(status).append("\n");
+        t.append("Duration     : ").append(duration(s)).append("\n");
+        t.append("Build URL    : ").append(b.buildUrl != null ? b.buildUrl : "N/A (local run)").append("\n\n");
+
+        t.append(LINE).append("         TEST EXECUTION SUMMARY\n").append(LINE);
+        t.append("Total Tests  : ").append(s.total()).append("\n");
+        t.append("Passed       : ").append(s.passed).append(" ").append(EMOJI_PASSED).append("\n");
+        t.append("Failed       : ").append(s.failed.size()).append(" ").append(EMOJI_FAILED).append("\n");
+        t.append("Skipped      : ").append(s.skipped.size()).append(" ").append(EMOJI_SKIPPED).append("\n");
+        t.append("Pass Rate    : ").append(passRate(s)).append("\n");
+
+        if (!s.byClass.isEmpty()) {
+            t.append("\nRESULTS BY TEST CLASS\n").append(THIN);
+            for (Map.Entry<String, ClassStats> e : s.byClass.entrySet()) {
+                ClassStats c = e.getValue();
+                String mark = c.failed > 0 ? EMOJI_FAILED : c.skipped > 0 ? EMOJI_SKIPPED : EMOJI_PASSED;
+                t.append(mark).append(" ").append(e.getKey())
+                        .append("  (Passed: ").append(c.passed)
+                        .append(", Failed: ").append(c.failed)
+                        .append(", Skipped: ").append(c.skipped).append(")\n");
+            }
+        }
+        appendRows(t, "FAILED TESTS", s.failed);
+        appendRows(t, "SETUP / TEARDOWN FAILURES", s.configFailures);
+        appendRows(t, "SKIPPED TESTS", s.skipped);
+        t.append("\n");
+
+        t.append(LINE).append("             VIEW REPORTS\n").append(LINE);
+        t.append("Extent Report (Detailed):\n");
+        t.append("Attached to this email - extract the ZIP and open ExtentReport.html\n");
+        if (b.buildUrl != null) {
+            String artifacts = b.buildUrl + "artifact/";
+            t.append(artifacts).append("test-output/ExtentReport.html\n\n");
+            t.append("TestNG Index Report:\n").append(artifacts).append("target/surefire-reports/index.html\n\n");
+            t.append("Console Output:\n").append(b.buildUrl).append("console\n\n");
+        } else {
+            t.append("\n");
+        }
+        t.append(LINE);
+        t.append("This is an automated email from Jenkins\n");
+        t.append(THIN);
+        return t.toString();
+    }
+
+    private static void appendRows(StringBuilder t, String title, List<Row> rows) {
+        if (rows.isEmpty()) return;
+        t.append("\n").append(title).append(" (").append(rows.size()).append("):\n").append(THIN);
+        int i = 1;
+        for (Row r : rows) {
+            t.append(i++).append(". ").append(r.className).append(" -> ").append(r.methodName).append("\n");
+            if (!r.detail.isEmpty()) t.append("   Reason: ").append(r.detail).append("\n");
+        }
+    }
+
+    // ------------------------------------------------------------------ attachment
+
+    /** Zips ExtentReport.html with its spark/ assets so the report renders correctly when opened from the mail. */
+    private static File zipExtentReport() {
+        File report = new File(EXTENT_REPORT);
+        if (!report.exists()) {
+            System.out.println("[WARN] Extent report not found at " + EXTENT_REPORT + "; sending email without attachment.");
+            return null;
+        }
+        File zip = new File("target/RCS_Automation_ExtentReport.zip");
+        zip.getParentFile().mkdirs();
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip))) {
+            addToZip(zos, report.toPath(), "ExtentReport.html");
+            Path assets = new File(EXTENT_ASSETS).toPath();
+            if (Files.isDirectory(assets)) {
+                try (Stream<Path> files = Files.walk(assets)) {
+                    for (Path p : (Iterable<Path>) files.filter(Files::isRegularFile)::iterator) {
+                        addToZip(zos, p, "spark/" + assets.relativize(p).toString().replace('\\', '/'));
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("[WARN] Could not zip Extent report: " + e.getMessage());
+            return null;
+        }
+        if (zip.length() > MAX_ATTACHMENT_BYTES) {
+            System.out.println("[WARN] Extent report ZIP is " + (zip.length() / (1024 * 1024))
+                    + " MB (over the mail limit); sending without attachment. Use the Jenkins artifact link instead.");
+            return null;
+        }
+        return zip;
+    }
+
+    private static void addToZip(ZipOutputStream zos, Path file, String entryName) throws IOException {
+        zos.putNextEntry(new ZipEntry(entryName));
+        Files.copy(file, zos);
+        zos.closeEntry();
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    private static String simpleName(String fqcn) {
+        int i = fqcn.lastIndexOf('.');
+        return i >= 0 ? fqcn.substring(i + 1) : fqcn;
+    }
+
+    private static String errorMessage(Throwable t) {
+        if (t == null) return "";
+        String msg = t.getMessage();
+        if (msg == null || msg.trim().isEmpty()) msg = t.getClass().getSimpleName();
+        // Selenium appends multi-line build/session info; the first line is the meaningful part
+        msg = msg.split("\\R", 2)[0].trim();
+        return msg.length() > MAX_ERROR_LENGTH ? msg.substring(0, MAX_ERROR_LENGTH) + "..." : msg;
+    }
+
+    /** Same style as Jenkins' durationString, e.g. "1 hr 5 min", "1 min 58 sec". */
+    private static String duration(Summary s) {
+        if (s.start == null || s.end == null) return "N/A";
+        long sec = Math.max(0, (s.end.getTime() - s.start.getTime()) / 1000);
+        long h = sec / 3600, m = (sec % 3600) / 60, ss = sec % 60;
+        if (h > 0) return h + " hr " + m + " min";
+        if (m > 0) return m + " min " + ss + " sec";
+        return ss + " sec";
     }
 }

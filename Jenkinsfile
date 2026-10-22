@@ -1,9 +1,17 @@
 pipeline {
     agent any
 
+    options {
+        // Chrome/chromedriver processes are force-killed at start, so builds must not overlap
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '15'))
+    }
+
     parameters {
         choice(name: 'TEST_TO_RUN', choices: ['testng.xml', 'enterprise.xml', 'superadmin.xml', 'LoginTest'], description: 'Select specific test class (e.g. LoginTest) or TestNG XML suite file')
         booleanParam(name: 'HEADLESS', defaultValue: true, description: 'Run browser in headless mode')
+        booleanParam(name: 'SEND_EMAIL', defaultValue: true, description: 'Send the execution summary email with the Extent report attached')
+        string(name: 'EMAIL_RECIPIENTS', defaultValue: 'sonu.bhagat@altiquence.com,aryan.sonu7562@gmail.com', description: 'Comma-separated list of report recipients')
     }
 
     environment {
@@ -32,7 +40,7 @@ pipeline {
         stage('Compile Project') {
             steps {
                 echo 'Cleaning and Compiling project...'
-                bat 'mvn clean compile -DskipTests'
+                bat 'mvn -B clean compile -DskipTests'
             }
         }
 
@@ -40,12 +48,19 @@ pipeline {
             steps {
                 timeout(time: 180, unit: 'MINUTES') {
                     script {
+                        // Spaces removed and value quoted: cmd.exe treats unquoted commas as argument separators
+                        def recipients = params.EMAIL_RECIPIENTS.replaceAll('\\s', '')
+                        // maven.test.failure.ignore lets the run finish so the email/report is always produced;
+                        // the junit step below then marks the build UNSTABLE when any test fails.
+                        def commonArgs = "-B -Dbrowser.headless=${params.HEADLESS} -Dmaven.test.failure.ignore=true " +
+                                "\"-Demail.enable=${params.SEND_EMAIL}\" \"-Demail.recipients=${recipients}\""
+
                         if (params.TEST_TO_RUN.endsWith('.xml')) {
                             echo "Executing TestNG Suite File: ${params.TEST_TO_RUN} (Headless: ${params.HEADLESS})..."
-                            bat "mvn test -DsuiteXmlFile=${params.TEST_TO_RUN} -Dbrowser.headless=${params.HEADLESS}"
+                            bat "mvn test -DsuiteXmlFile=${params.TEST_TO_RUN} ${commonArgs}"
                         } else {
                             echo "Executing Test Class: ${params.TEST_TO_RUN} (Headless: ${params.HEADLESS})..."
-                            bat "mvn test -Dtest=${params.TEST_TO_RUN} -Dbrowser.headless=${params.HEADLESS}"
+                            bat "mvn test -Dtest=${params.TEST_TO_RUN} ${commonArgs}"
                         }
                     }
                 }
@@ -58,9 +73,9 @@ pipeline {
             // Archive test artifacts first to ensure they are available for viewing
             archiveArtifacts artifacts: 'test-output/**/*', allowEmptyArchive: true
             archiveArtifacts artifacts: 'target/surefire-reports/**/*', allowEmptyArchive: true
-            
-            // Parse JUnit results for Jenkins trend charts
-            junit testResults: 'target/surefire-reports/**/*.xml', allowEmptyResults: true
+
+            // Parse JUnit results for Jenkins trend charts (TEST-*.xml only; testng-results.xml is not JUnit format)
+            junit testResults: 'target/surefire-reports/TEST-*.xml', allowEmptyResults: true
         }
     }
 }

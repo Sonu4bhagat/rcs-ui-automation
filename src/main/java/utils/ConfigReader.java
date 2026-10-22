@@ -18,7 +18,23 @@ public class ConfigReader {
         }
     }
 
+    /**
+     * Resolution order:
+     * 1. JVM system property (e.g. -Demail.recipients=... passed from Jenkins)
+     * 2. Environment variable, key upper-cased with dots as underscores
+     *    (e.g. EMAIL_PASSWORD injected from Jenkins credentials)
+     * 3. config.properties
+     */
     public static String get(String key) {
-        return properties.getProperty(key);
+        String value = System.getProperty(key);
+        if (value != null && !value.trim().isEmpty()) {
+            return value.trim();
+        }
+        value = System.getenv(key.toUpperCase().replace('.', '_'));
+        if (value != null && !value.trim().isEmpty()) {
+            return value.trim();
+        }
+        value = properties.getProperty(key);
+        return value != null ? value.trim() : null;
     }
 }

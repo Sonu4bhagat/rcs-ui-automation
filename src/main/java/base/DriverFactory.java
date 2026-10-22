@@ -69,7 +69,13 @@ public class DriverFactory {
         }
 
         driver.set(new ChromeDriver(options));
-        driver.get().manage().window().maximize();
+        if (isHeadlessMode()) {
+            // maximize() in headless Chrome shrinks the window to the 800x600 virtual screen,
+            // which hides overflowing tabs/elements (e.g. the RCS service tab on Analytics)
+            driver.get().manage().window().setSize(new org.openqa.selenium.Dimension(1920, 1080));
+        } else {
+            driver.get().manage().window().maximize();
+        }
 
         // Reduce implicit wait to avoid conflicts with explicit waits and speed up
         // execution
