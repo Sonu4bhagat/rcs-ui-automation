@@ -5,9 +5,9 @@ import helpers.RCSAssistantTestHelper;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.RCSAssistantPage;
-import pages.ServicesPage;
+import pages.common.LoginPage;
+import pages.enterprise.RCSAssistantPage;
+import pages.enterprise.ServicesPage;
 import utils.ScreenshotUtil;
 
 /**

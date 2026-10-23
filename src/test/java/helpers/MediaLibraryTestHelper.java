@@ -1,8 +1,8 @@
 package helpers;
 
 import org.openqa.selenium.WebDriver;
-import pages.LoginPage;
-import pages.NavigationPage;
+import pages.common.LoginPage;
+import pages.enterprise.NavigationPage;
 
 public class MediaLibraryTestHelper {
     WebDriver driver;

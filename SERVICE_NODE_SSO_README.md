@@ -6,7 +6,7 @@ This test suite validates the Service Node SSO (Single Sign-On) functionality fo
 ## Files Created
 
 ### 1. **ServiceNodeSSOPageLocators.java**
-- **Location:** `src/main/java/locators/ServiceNodeSSOPageLocators.java`
+- **Location:** `src/main/java/locators/superadmin/ServiceNodeSSOPageLocators.java`
 - **Purpose:** Contains all XPath and CSS selectors for Service Node SSO page elements
 - **Key Locators:**
   - Navigation menu
@@ -16,7 +16,7 @@ This test suite validates the Service Node SSO (Single Sign-On) functionality fo
   - Validation elements
 
 ### 2. **ServiceNodeSSOPage.java**
-- **Location:** `src/main/java/pages/ServiceNodeSSOPage.java`
+- **Location:** `src/main/java/pages/superadmin/ServiceNodeSSOPage.java`
 - **Purpose:** Page Object Model for Service Node SSO functionality
 - **Key Methods:**
   - `navigateToServiceNodeSSO()` - Navigate to SSO page

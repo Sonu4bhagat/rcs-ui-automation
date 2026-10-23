@@ -1,7 +1,7 @@
 package tests.reseller;
 
 import base.BaseTest;
-import locators.ResellerDashboardUserManagementPageLocators;
+import locators.reseller.ResellerDashboardUserManagementPageLocators;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -9,8 +9,8 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.ResellerDashboardUserManagementPage;
+import pages.common.LoginPage;
+import pages.reseller.ResellerDashboardUserManagementPage;
 
 import java.time.Duration;
 import java.util.List;
@@ -46,6 +46,16 @@ public class ResellerDashboardUserManagementTest extends BaseTest {
         loginPage = new LoginPage(driver);
         page = new ResellerDashboardUserManagementPage(driver);
         retainSession = true;
+        // If the session is lost mid-class (browser crash / session ended), log in again as Reseller
+        sessionRole = enums.UserRole.RESELLER;
+    }
+
+    @Override
+    protected void loginAgain(LoginPage freshLoginPage) {
+        // After a browser crash BaseTest creates a new driver, so the page objects must follow it
+        loginPage = freshLoginPage;
+        page = new ResellerDashboardUserManagementPage(driver);
+        super.loginAgain(freshLoginPage);
     }
 
     // ==================== TC01: Verify User List Headers ====================
@@ -376,6 +386,8 @@ public class ResellerDashboardUserManagementTest extends BaseTest {
         String urlAfter = driver.getCurrentUrl();
         System.out.println("URL before/after Add New click: " + urlBefore + " / " + urlAfter);
         Assert.assertNotEquals(urlAfter, urlBefore, "Add New should redirect to the service account detail page");
+        Assert.assertTrue(urlAfter.contains("/create/service-account"),
+                "Add New should open the create service account page. URL: " + urlAfter);
         System.out.println("Add New service redirect validated.");
 
         driver.navigate().back();
@@ -384,7 +396,9 @@ public class ResellerDashboardUserManagementTest extends BaseTest {
 
     // ==================== TC15: Verify Refill Balance ====================
 
-    @Test(priority = 15, description = "TC15: Validate Refill adds ₹5 and the available balance updates correctly", dependsOnMethods = "testAddNewServiceRedirect")
+    // Depends on TC13 (not TC14): it opens the services page itself and only needs the customer/wallet
+    // found in TC08/TC13, so an Add New failure no longer skips the remaining 16 tests.
+    @Test(priority = 15, description = "TC15: Validate Refill adds ₹5 and the available balance updates correctly", dependsOnMethods = "testWalletServicesDisplay")
     public void testRefillBalanceValidation() throws InterruptedException {
         System.out.println("=== TC15: Verify Refill Balance ===");
 
@@ -392,16 +406,18 @@ public class ResellerDashboardUserManagementTest extends BaseTest {
                 + "/customer-wallets/" + targetWalletName + "/services");
         Thread.sleep(2000);
 
-        walletBalanceBeforeRefill = page.parseBalance(page.getWalletBalanceValue());
+        // Fail clearly if the balance can't be read - otherwise it would silently count as 0.0
+        String balanceText = page.getWalletBalanceValue();
+        Assert.assertFalse(balanceText.isEmpty(), "Available Wallet Balance should be displayed before Refill");
+        walletBalanceBeforeRefill = page.parseBalance(balanceText);
         System.out.println("Balance before Refill: " + walletBalanceBeforeRefill);
 
         page.clickRefillButton();
         Thread.sleep(1000);
         page.enterRefillDeductAmount(String.valueOf(REFILL_DEDUCT_AMOUNT));
         page.clickRefillDeductSubmit();
-        Thread.sleep(2500);
 
-        double balanceAfter = page.parseBalance(page.getWalletBalanceValue());
+        double balanceAfter = page.waitForBalanceChange(walletBalanceBeforeRefill);
         System.out.println("Balance after Refill: " + balanceAfter);
         Assert.assertEquals(balanceAfter, walletBalanceBeforeRefill + REFILL_DEDUCT_AMOUNT, 0.01,
                 "Balance should increase by ₹" + REFILL_DEDUCT_AMOUNT + " after Refill");
@@ -414,16 +430,17 @@ public class ResellerDashboardUserManagementTest extends BaseTest {
     public void testDeductBalanceValidation() throws InterruptedException {
         System.out.println("=== TC16: Verify Deduct Balance ===");
 
-        walletBalanceBeforeDeduct = page.parseBalance(page.getWalletBalanceValue());
+        String balanceText = page.getWalletBalanceValue();
+        Assert.assertFalse(balanceText.isEmpty(), "Available Wallet Balance should be displayed before Deduct");
+        walletBalanceBeforeDeduct = page.parseBalance(balanceText);
         System.out.println("Balance before Deduct: " + walletBalanceBeforeDeduct);
 
         page.clickDeductButton();
         Thread.sleep(1000);
         page.enterRefillDeductAmount(String.valueOf(REFILL_DEDUCT_AMOUNT));
         page.clickRefillDeductSubmit();
-        Thread.sleep(2500);
 
-        double balanceAfter = page.parseBalance(page.getWalletBalanceValue());
+        double balanceAfter = page.waitForBalanceChange(walletBalanceBeforeDeduct);
         System.out.println("Balance after Deduct: " + balanceAfter);
         Assert.assertEquals(balanceAfter, walletBalanceBeforeDeduct - REFILL_DEDUCT_AMOUNT, 0.01,
                 "Balance should decrease by ₹" + REFILL_DEDUCT_AMOUNT + " after Deduct");

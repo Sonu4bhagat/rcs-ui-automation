@@ -1,7 +1,7 @@
 package helpers;
 
 import org.openqa.selenium.WebDriver;
-import pages.EnterpriseReportsPage;
+import pages.enterprise.EnterpriseReportsPage;
 
 import java.util.Set;
 

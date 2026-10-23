@@ -4,8 +4,8 @@ import base.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.ResellerDashboardPage;
+import pages.common.LoginPage;
+import pages.reseller.ResellerDashboardPage;
 
 import java.util.List;
 
@@ -246,7 +246,7 @@ public class ResellerDashboardMyWalletsTest extends BaseTest {
         boolean noDataShown = walletPage.isNoDataMessageDisplayed();
         if (noDataShown) {
             String message = driver.findElement(
-                    locators.ResellerDashboardPageLocators.NO_DATA_MESSAGE).getText().trim();
+                    locators.reseller.ResellerDashboardPageLocators.NO_DATA_MESSAGE).getText().trim();
             System.out.println("No matching wallets found. Message: '" + message + "'");
             Assert.assertTrue(message.toLowerCase().contains("no data available")
                     || message.toLowerCase().contains("no data"),
@@ -330,7 +330,7 @@ public class ResellerDashboardMyWalletsTest extends BaseTest {
         Assert.assertTrue(walletPage.isSourceWalletDropdownVisible(), "Source wallet dropdown should be displayed");
 
         List<String> options = walletPage.getDropdownOptionTexts(
-                locators.ResellerDashboardPageLocators.SOURCE_WALLET_DROPDOWN);
+                locators.reseller.ResellerDashboardPageLocators.SOURCE_WALLET_DROPDOWN);
         System.out.println("Source wallet options: " + options);
         Assert.assertFalse(options.isEmpty(), "Source wallet dropdown should list available wallets");
 
@@ -379,7 +379,7 @@ public class ResellerDashboardMyWalletsTest extends BaseTest {
                 "Destination wallet dropdown should be displayed");
 
         List<String> options = walletPage.getDropdownOptionTexts(
-                locators.ResellerDashboardPageLocators.DESTINATION_WALLET_DROPDOWN);
+                locators.reseller.ResellerDashboardPageLocators.DESTINATION_WALLET_DROPDOWN);
         System.out.println("Destination wallet options: " + options);
         Assert.assertFalse(options.isEmpty(), "Destination wallet dropdown should list eligible wallets");
 

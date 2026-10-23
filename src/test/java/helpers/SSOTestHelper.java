@@ -4,7 +4,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.testng.Assert;
-import pages.ServiceNodeSSOPage;
+import pages.superadmin.ServiceNodeSSOPage;
 
 import java.util.List;
 import java.util.Set;
@@ -205,7 +205,7 @@ public class SSOTestHelper {
                                     System.out.println("  New Window Title: " + newWindowTitle);
 
                                     // Verify dashboard loaded by checking for SPARC logo
-                                    pages.DashboardPage dashboardPage = new pages.DashboardPage(driver);
+                                    pages.common.DashboardPage dashboardPage = new pages.common.DashboardPage(driver);
                                     System.out.println(
                                             "  Verifying dashboard for " + serviceName + " with role " + roleName);
                                     redirectedToDashboard = dashboardPage.verifyDashboardWithRole(roleName);
@@ -223,7 +223,7 @@ public class SSOTestHelper {
 
                             // Verify dashboard loaded by checking for SPARC logo
                             if (!newWindowUrl.contains("service-nodes-sso")) {
-                                pages.DashboardPage dashboardPage = new pages.DashboardPage(driver);
+                                pages.common.DashboardPage dashboardPage = new pages.common.DashboardPage(driver);
                                 redirectedToDashboard = dashboardPage.verifyDashboardWithRole(roleName);
                             }
                         }

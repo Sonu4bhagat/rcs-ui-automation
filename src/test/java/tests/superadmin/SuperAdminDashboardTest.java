@@ -6,8 +6,8 @@ import helpers.DashboardTestHelper;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.DashboardPage;
-import pages.LoginPage;
+import pages.common.DashboardPage;
+import pages.common.LoginPage;
 
 public class SuperAdminDashboardTest extends BaseTest {
 

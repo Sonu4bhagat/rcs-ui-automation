@@ -4,7 +4,7 @@ import base.BaseTest;
 import helpers.DashboardTestHelper;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
+import pages.common.LoginPage;
 
 public class EnterpriseDashboardNavigationTest extends BaseTest {
 

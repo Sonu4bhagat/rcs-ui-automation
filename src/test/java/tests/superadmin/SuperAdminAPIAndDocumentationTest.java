@@ -5,8 +5,8 @@ import helpers.APIDocumentationTestHelper;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.APIAndDocumentationPage;
+import pages.common.LoginPage;
+import pages.common.APIAndDocumentationPage;
 import utils.ConfigReader;
 
 /**

@@ -1,12 +1,14 @@
 package tests.enterprise;
 
 import base.BaseTest;
+import enums.UserRole;
 import helpers.EnterpriseReportsHelper;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.EnterpriseReportsPage;
+import pages.common.LoginPage;
+import pages.enterprise.EnterpriseReportsPage;
 
 import java.util.List;
 
@@ -27,6 +29,26 @@ public class EnterpriseReportsTabTest extends BaseTest {
         reportsPage = new EnterpriseReportsPage(driver);
         reportsHelper = new EnterpriseReportsHelper(driver, reportsPage);
         retainSession = true; // Prevent BaseTest from auto-navigating to login
+        // If the session is lost mid-class (browser crash / session ended), log in again as Enterprise
+        sessionRole = UserRole.ENTERPRISE;
+    }
+
+    /** Re-login the same way Test Case 1 does (wallet with the most services). */
+    @Override
+    protected void loginAgain(LoginPage freshLoginPage) {
+        // After a browser crash BaseTest creates a new driver, so the page objects must follow it
+        loginPage = freshLoginPage;
+        reportsPage = new EnterpriseReportsPage(driver);
+        reportsHelper = new EnterpriseReportsHelper(driver, reportsPage);
+        loginPage.loginWithEnterpriseMaxServices();
+    }
+
+    /** The name check only applies when the redirect test before it actually opened a service node. */
+    private void skipIfNotRedirected(String service) {
+        if (!reportsPage.wasRedirectedToServiceNode()) {
+            throw new SkipException("No redirect to a " + service + " service node happened (no redirect icon "
+                    + "or no records), so there is no service account name to validate.");
+        }
     }
 
     // ==================== Test Case 1: Dashboard Navigation & Reports Redirection
@@ -259,6 +281,7 @@ public class EnterpriseReportsTabTest extends BaseTest {
     @Test(priority = 8, description = "Validate Service Account Name matches on Dashboard after SSO redirect", dependsOnMethods = "testReportsTabSelection", alwaysRun = true)
     public void testServiceAccountNameValidation() {
         System.out.println("=== Test Case 8: Service Account Name Validation ===");
+        skipIfNotRedirected("SMS");
 
         try {
             // Validate service account name matches
@@ -375,6 +398,7 @@ public class EnterpriseReportsTabTest extends BaseTest {
     @Test(priority = 15, description = "Validate RCS Service Account Name", dependsOnMethods = "testRCSReportsTabSelection", alwaysRun = true)
     public void testRCSServiceAccountNameValidation() {
         System.out.println("=== Test Case 15: RCS Service Account Name Validation ===");
+        skipIfNotRedirected("RCS");
         try {
             Assert.assertTrue(reportsPage.validateServiceAccountNameMatch(), "RCS Service Account Name should match");
             System.out.println("✓ RCS Service Account Name validated.");
@@ -481,6 +505,7 @@ public class EnterpriseReportsTabTest extends BaseTest {
     @Test(priority = 22, description = "Validate WABA Service Account Name", dependsOnMethods = "testWABAReportsTabSelection", alwaysRun = true)
     public void testWABAServiceAccountNameValidation() {
         System.out.println("=== Test Case 22: WABA Service Account Name Validation ===");
+        skipIfNotRedirected("WABA");
         try {
             Assert.assertTrue(reportsPage.validateServiceAccountNameMatch(), "WABA Service Account Name should match");
             System.out.println("✓ WABA Service Account Name validated.");
@@ -587,6 +612,7 @@ public class EnterpriseReportsTabTest extends BaseTest {
     @Test(priority = 29, description = "Validate IVR Service Account Name", dependsOnMethods = "testIVRReportsTabSelection", alwaysRun = true)
     public void testIVRServiceAccountNameValidation() {
         System.out.println("=== Test Case 29: IVR Service Account Name Validation ===");
+        skipIfNotRedirected("IVR");
         try {
             Assert.assertTrue(reportsPage.validateServiceAccountNameMatch(), "IVR Service Account Name should match");
             System.out.println("✓ IVR Service Account Name validated.");
@@ -693,6 +719,7 @@ public class EnterpriseReportsTabTest extends BaseTest {
     @Test(priority = 36, description = "Validate OBD Service Account Name", dependsOnMethods = "testOBDReportsTabSelection", alwaysRun = true)
     public void testOBDServiceAccountNameValidation() {
         System.out.println("=== Test Case 36: OBD Service Account Name Validation ===");
+        skipIfNotRedirected("OBD");
         try {
             Assert.assertTrue(reportsPage.validateServiceAccountNameMatch(), "OBD Service Account Name should match");
             System.out.println("✓ OBD Service Account Name validated.");
@@ -799,6 +826,7 @@ public class EnterpriseReportsTabTest extends BaseTest {
     @Test(priority = 43, description = "Validate CCS Service Account Name", dependsOnMethods = "testCCSReportsTabSelection", alwaysRun = true)
     public void testCCSServiceAccountNameValidation() {
         System.out.println("=== Test Case 43: CCS Service Account Name Validation ===");
+        skipIfNotRedirected("CCS");
         try {
             Assert.assertTrue(reportsPage.validateServiceAccountNameMatch(), "CCS Service Account Name should match");
             System.out.println("✓ CCS Service Account Name validated.");

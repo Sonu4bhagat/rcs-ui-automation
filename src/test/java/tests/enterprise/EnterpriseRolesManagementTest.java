@@ -4,9 +4,9 @@ import base.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.EnterpriseControlCenterPage;
-import pages.EnterpriseRolesManagementPage;
+import pages.common.LoginPage;
+import pages.enterprise.EnterpriseControlCenterPage;
+import pages.enterprise.EnterpriseRolesManagementPage;
 
 import java.util.Arrays;
 import java.util.List;

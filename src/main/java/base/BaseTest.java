@@ -2,6 +2,8 @@ package base;
 
 import utils.ConfigReader;
 import base.DriverFactory;
+import enums.UserRole;
+import pages.common.LoginPage;
 import org.openqa.selenium.WebDriver;
 import org.testng.ITestResult;
 import org.testng.annotations.*;
@@ -18,6 +20,11 @@ public class BaseTest {
     protected ExtentReports extent;
     protected ExtentTest test;
     protected boolean retainSession = false; // Flag to skip auto-navigation to login
+    // Optional (use with retainSession): role this class logs in as. When set, a test that unexpectedly
+    // lands on the login page (browser crash, session ended elsewhere) logs in again as this role and
+    // returns to the last page, instead of every remaining test in the class failing.
+    protected UserRole sessionRole = null;
+    private String lastAppUrl; // last non-login page seen after a test, used for session recovery
 
     @BeforeSuite
     public void setupReport() {
@@ -90,7 +97,9 @@ public class BaseTest {
 
             if (retainSession) {
                 // If we want to retain session, but we are back on login page of the SAME host
-                if (isOnLoginPage) {
+                if (isOnLoginPage && sessionRole != null && lastAppUrl != null && !LoginPage.wasLoggedOutByTest()) {
+                    restoreSession(method.getName(), currentUrl, targetUrl);
+                } else if (isOnLoginPage) {
                     System.out.println(
                             "[WARN] retainSession=true but on Login page of " + targetHost
                                     + ". Forcing navigation to Login to allow re-login.");
@@ -109,8 +118,63 @@ public class BaseTest {
         }
     }
 
+    /**
+     * Logs in again as {@link #sessionRole} and returns to the last page the class was on.
+     * Only used when the session was lost unexpectedly (not after a test's own logout).
+     */
+    private void restoreSession(String testName, String currentUrl, String loginUrl) {
+        System.out.println("[RECOVERY] Session lost before " + testName + ". Logging in again as " + sessionRole
+                + " and returning to " + lastAppUrl);
+        test.warning("Session was lost (browser crash or session ended). Logged in again as " + sessionRole
+                + " and returned to the previous page.");
+        try {
+            if (!currentUrl.equals(loginUrl)) {
+                driver.get(loginUrl);
+            }
+            loginAgain(new LoginPage(driver));
+            driver.get(lastAppUrl);
+        } catch (Exception e) {
+            System.err.println("[RECOVERY] Re-login failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Logs in as {@link #sessionRole} during session recovery. Override when the class logs in
+     * differently (e.g. a specific wallet) or keeps page objects that must use the current driver.
+     */
+    protected void loginAgain(LoginPage loginPage) {
+        switch (sessionRole) {
+            case SUPERADMIN:
+                loginPage.loginWithSuperAdminCredentials();
+                break;
+            case ENTERPRISE:
+                loginPage.loginWithEnterpriseCredentials();
+                break;
+            case RESELLER:
+                loginPage.loginWithResellerCredentials();
+                break;
+        }
+    }
+
+    /** Remembers the current page if it is inside the app (not the login page). */
+    private void rememberLastAppUrl() {
+        try {
+            String url = driver.getCurrentUrl();
+            String appHost = new java.net.URL(ConfigReader.get("url")).getHost();
+            // Only pages of the app itself (not external SSO/service-node sites opened from it)
+            if (new java.net.URL(url).getHost().equals(appHost)
+                    && !url.contains("login") && !url.equals(ConfigReader.get("url"))) {
+                lastAppUrl = url;
+                LoginPage.clearLoggedOutByTest(); // logged in again since any earlier deliberate logout
+            }
+        } catch (Exception e) {
+            // Browser crashed during the test - keep the previous page for recovery
+        }
+    }
+
     @AfterMethod
     public void afterEachTest(ITestResult result) {
+        rememberLastAppUrl();
         if (result.getStatus() == ITestResult.FAILURE) {
             // Log the failure with exception details
             test.fail("<b><font color='red'>Test Failed:</font></b> " + result.getName());

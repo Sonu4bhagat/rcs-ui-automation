@@ -5,8 +5,8 @@ import helpers.SSOTestHelper;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.ServiceNodeSSOPage;
+import pages.common.LoginPage;
+import pages.superadmin.ServiceNodeSSOPage;
 
 /**
  * Test Suite for Service Node SSO Module

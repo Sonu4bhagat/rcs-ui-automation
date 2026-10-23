@@ -2,7 +2,7 @@ package helpers;
 
 import org.openqa.selenium.WebDriver;
 import org.testng.Assert;
-import pages.DashboardPage;
+import pages.common.DashboardPage;
 import base.DriverFactory;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.ExpectedConditions;

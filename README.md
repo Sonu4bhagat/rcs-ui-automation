@@ -22,8 +22,16 @@ RCS_Automation/
 ├── src/
 │   ├── main/java/
 │   │   ├── base/              # Base test configuration
-│   │   ├── locators/          # Page element locators
-│   │   ├── pages/             # Page Object Model classes
+│   │   ├── locators/          # Page element locators, one folder per user role
+│   │   │   ├── common/        #   Used by more than one role (Login, Dashboard, API Docs)
+│   │   │   ├── enterprise/
+│   │   │   ├── reseller/
+│   │   │   └── superadmin/
+│   │   ├── pages/             # Page Object Model classes, same role folders as locators/
+│   │   │   ├── common/
+│   │   │   ├── enterprise/
+│   │   │   ├── reseller/
+│   │   │   └── superadmin/
 │   │   └── utils/             # Utility classes
 │   └── test/java/
 │       ├── helpers/           # Test helper classes (shared across roles)
@@ -46,6 +54,9 @@ RCS_Automation/
 2. Set the package to match the folder, e.g. `package tests.reseller;`.
 3. Prefix the class name with the role, e.g. `ResellerDashboardWalletTest`.
 4. Register it in `testng.xml` **and** in that role's suite file (`enterprise.xml`, `reseller.xml` or `superadmin.xml`).
+5. Put the matching page and locator classes in the **same role folder** under `pages/` and `locators/`
+   (e.g. `pages/reseller/ResellerDashboardWalletPage` + `locators/reseller/ResellerDashboardWalletPageLocators`).
+   If a page is used by tests of more than one role, put it (and its locators) in `common/`.
 
 The Extent report and the email summary group results by role automatically based on the folder.
 

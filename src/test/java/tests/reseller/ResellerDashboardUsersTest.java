@@ -6,8 +6,8 @@ import org.openqa.selenium.WebElement;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.ResellerDashboardUsersPage;
+import pages.common.LoginPage;
+import pages.reseller.ResellerDashboardUsersPage;
 
 import java.util.List;
 
@@ -175,7 +175,7 @@ public class ResellerDashboardUsersTest extends BaseTest {
         // Confirmed live: a "Clear All" button only appears in the DOM after a
         // filter has actually been applied (it isn't present beforehand).
         List<WebElement> clearButtons = driver.findElements(
-                locators.ResellerDashboardUsersPageLocators.CLEAR_ALL_FILTERS_BUTTON);
+                locators.reseller.ResellerDashboardUsersPageLocators.CLEAR_ALL_FILTERS_BUTTON);
         Assert.assertFalse(clearButtons.isEmpty(), "Clear All button should appear once a filter is applied");
 
         usersPage.clickClearAllFilters();

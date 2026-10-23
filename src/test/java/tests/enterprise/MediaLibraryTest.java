@@ -5,7 +5,7 @@ import helpers.MediaLibraryTestHelper;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.MediaLibraryPage;
+import pages.enterprise.MediaLibraryPage;
 
 public class MediaLibraryTest extends BaseTest {
 

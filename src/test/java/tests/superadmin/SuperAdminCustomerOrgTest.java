@@ -4,8 +4,8 @@ import base.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.CustomerOrgPage;
-import pages.LoginPage;
+import pages.superadmin.CustomerOrgPage;
+import pages.common.LoginPage;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -23,6 +23,8 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
     public void configureSession() {
         // Retain session for multi-priority regression steps
         retainSession = true;
+        // If the session is lost mid-class (browser crash / session ended), log in again as SuperAdmin
+        sessionRole = enums.UserRole.SUPERADMIN;
     }
 
     @Test(priority = 1, description = "Login as SuperAdmin and Navigate to Customer Org")
@@ -319,9 +321,9 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         String newUrl = driver.getCurrentUrl();
         System.out.println("Current URL after navigation: " + newUrl);
 
-        Assert.assertTrue(newUrl.contains("roles") || newUrl.contains("profile"),
-                "URL should contain 'roles' or 'profile'. Current URL: " + newUrl);
-        Assert.assertTrue(page.isRolesTabLoaded(), "Roles/Profiles tab should load successfully");
+        Assert.assertTrue(newUrl.contains("/roles"),
+                "URL should contain '/roles' (Roles tab, not Profiles). Current URL: " + newUrl);
+        Assert.assertTrue(page.isRolesTabLoaded(), "Roles tab should load successfully");
         System.out.println("✓ Roles tab is visible and accessible");
         Thread.sleep(500); // Stabilize before next test
     }
@@ -340,7 +342,8 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
 
         Assert.assertFalse(headers.isEmpty(), "Roles table should have headers");
 
-        List<String> expectedHeaders = Arrays.asList("Role Name", "Created On", "Assigned Services", "Status");
+        // Confirmed live on the Roles tab (/roles): Role Name | Users | Permissions | Status | (actions)
+        List<String> expectedHeaders = Arrays.asList("Role Name", "Users", "Permissions", "Status");
 
         org.testng.asserts.SoftAssert softAssert = new org.testng.asserts.SoftAssert();
         for (String expected : expectedHeaders) {
@@ -586,10 +589,11 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         Assert.assertEquals(uniqueHeaders.size(), sectionHeaders.size(),
                 "Section headers should have no duplicates. Found: " + sectionHeaders);
 
-        // Expected sections: Password Setup, 2-Step Verification, Access Control
-        // List, Wallets, Service Accounts
-        Assert.assertTrue(sectionHeaders.size() >= 4,
-                "Should have at least 4 section headers. Found: " + sectionHeaders.size());
+        // Confirmed live: the Add Role form (/roles/add) has a single "Role Permissions" section.
+        // (Password Setup / 2-Step Verification / Access Control List / Wallets / Service Accounts
+        // belong to the Profile form, which this test opened before the Roles tab locator was fixed.)
+        Assert.assertTrue(sectionHeaders.stream().anyMatch(h -> h.equalsIgnoreCase("Role Permissions")),
+                "Add Role form should have a 'Role Permissions' section. Found: " + sectionHeaders);
 
         System.out.println("✓ Form section header structure validated. No duplicates found.");
 

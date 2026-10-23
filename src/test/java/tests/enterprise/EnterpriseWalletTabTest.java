@@ -4,8 +4,8 @@ import base.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.EnterpriseWalletPage;
+import pages.common.LoginPage;
+import pages.enterprise.EnterpriseWalletPage;
 
 import java.util.List;
 

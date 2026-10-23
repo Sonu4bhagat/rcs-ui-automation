@@ -1,9 +1,9 @@
 package helpers;
 
 import org.openqa.selenium.WebDriver;
-import pages.LoginPage;
-import pages.ServicesPage;
-import pages.RCSAssistantPage;
+import pages.common.LoginPage;
+import pages.enterprise.ServicesPage;
+import pages.enterprise.RCSAssistantPage;
 import utils.ExtentReportManager;
 
 /**

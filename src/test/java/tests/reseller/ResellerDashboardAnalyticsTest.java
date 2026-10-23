@@ -4,8 +4,8 @@ import base.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.ResellerDashboardAnalyticsPage;
+import pages.common.LoginPage;
+import pages.reseller.ResellerDashboardAnalyticsPage;
 
 import java.util.List;
 
@@ -43,7 +43,7 @@ public class ResellerDashboardAnalyticsTest extends BaseTest {
         Assert.assertTrue(driver.getCurrentUrl().contains("dashboard/analytics"),
                 "URL should navigate to the Analytics tab route. URL: " + driver.getCurrentUrl());
         Assert.assertTrue(analyticsPage.isElementVisible(
-                locators.ResellerDashboardAnalyticsPageLocators.ANALYTICS_HEADER),
+                locators.reseller.ResellerDashboardAnalyticsPageLocators.ANALYTICS_HEADER),
                 "Performance Overview header should be displayed");
         System.out.println("Analytics tab clicked and Performance Overview loaded.");
     }
@@ -58,7 +58,7 @@ public class ResellerDashboardAnalyticsTest extends BaseTest {
                 "All service tabs (SMS/IVR/OBD/CCS/WABA/RCS) should be available by default. Found: "
                         + analyticsPage.getServiceTabTexts());
 
-        for (String service : locators.ResellerDashboardAnalyticsPageLocators.ALL_SERVICE_NAMES) {
+        for (String service : locators.reseller.ResellerDashboardAnalyticsPageLocators.ALL_SERVICE_NAMES) {
             analyticsPage.clickServiceTab(service);
             Thread.sleep(1800);
 
@@ -102,7 +102,7 @@ public class ResellerDashboardAnalyticsTest extends BaseTest {
         List<String> tabsAfterSelect = analyticsPage.getServiceTabTexts();
         System.out.println("Service tabs after selecting '" + customerWithService + "': " + tabsAfterSelect);
         boolean hasAnyService = tabsAfterSelect.stream().anyMatch(t ->
-                java.util.Arrays.asList(locators.ResellerDashboardAnalyticsPageLocators.ALL_SERVICE_NAMES).contains(t));
+                java.util.Arrays.asList(locators.reseller.ResellerDashboardAnalyticsPageLocators.ALL_SERVICE_NAMES).contains(t));
         Assert.assertTrue(hasAnyService,
                 "Customer '" + customerWithService + "' should have at least one service tab available");
         Assert.assertFalse(analyticsPage.isAccessNotAllowedMessageDisplayed(),
@@ -121,7 +121,7 @@ public class ResellerDashboardAnalyticsTest extends BaseTest {
         List<String> tabsForNoService = analyticsPage.getServiceTabTexts();
         System.out.println("Service tabs after selecting '" + customerWithNoService + "': " + tabsForNoService);
         boolean anyServiceForNoServiceCustomer = tabsForNoService.stream().anyMatch(t ->
-                java.util.Arrays.asList(locators.ResellerDashboardAnalyticsPageLocators.ALL_SERVICE_NAMES).contains(t));
+                java.util.Arrays.asList(locators.reseller.ResellerDashboardAnalyticsPageLocators.ALL_SERVICE_NAMES).contains(t));
         Assert.assertFalse(anyServiceForNoServiceCustomer,
                 "Customer '" + customerWithNoService + "' should have no service tabs available");
         Assert.assertTrue(analyticsPage.isAccessNotAllowedMessageDisplayed(),

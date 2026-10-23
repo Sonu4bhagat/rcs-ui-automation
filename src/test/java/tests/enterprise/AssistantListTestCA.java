@@ -3,15 +3,15 @@ package tests.enterprise;
 
 import base.BaseTest;
 import helpers.AssistantTestHelper;
-import locators.AssistantsPageLocators;
+import locators.enterprise.AssistantsPageLocators;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.AssistantPage;
-import pages.AssistantsPage;
+import pages.enterprise.AssistantPage;
+import pages.enterprise.AssistantsPage;
 
 import java.time.Duration;
 import java.util.List;

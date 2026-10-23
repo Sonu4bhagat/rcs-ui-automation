@@ -2,7 +2,7 @@ package helpers;
 
 import org.openqa.selenium.WebDriver;
 import org.testng.Assert;
-import pages.ServicesPage;
+import pages.enterprise.ServicesPage;
 
 public class EnterpriseServicesHelper {
 

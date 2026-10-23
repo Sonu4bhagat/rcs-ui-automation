@@ -4,9 +4,9 @@ import base.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import pages.LoginPage;
-import pages.ServicesPage;
-import locators.DashboardPageLocators;
+import pages.common.LoginPage;
+import pages.enterprise.ServicesPage;
+import locators.common.DashboardPageLocators;
 
 public class EnterpriseServicesTabTest extends BaseTest {
 
