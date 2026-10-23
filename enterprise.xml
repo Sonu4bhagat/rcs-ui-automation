@@ -6,16 +6,18 @@
     </listeners>
     <test name="Enterprise Context Tests" preserve-order="true">
         <classes>
-            <class name="tests.LoginTest"/>
-            <class name="tests.EnterpriseDashboardNavigationTest"/>
-            <class name="tests.EnterpriseServicesTabTest"/>
-            <class name="tests.EnterpriseAPIDocumentationTest"/>
-            <class name="tests.EnterpriseWalletTabTest"/>
-            <class name="tests.EnterpriseRolesManagementTest"/>
-            <class name="tests.EnterpriseReportsTabTest"/>
-            <class name="tests.EnterpriseRateCardTabTest"/>
-            <class name="tests.EnterpriseControlCenterTabTest"/>
-            <class name="tests.EnterpriseRCSAssistantFlowTest"/>
+            <class name="tests.common.LoginTest"/>
+            <class name="tests.enterprise.EnterpriseDashboardNavigationTest"/>
+            <class name="tests.enterprise.EnterpriseServicesTabTest"/>
+            <class name="tests.enterprise.EnterpriseAPIDocumentationTest"/>
+            <class name="tests.enterprise.EnterpriseWalletTabTest"/>
+            <class name="tests.enterprise.EnterpriseRolesManagementTest"/>
+            <class name="tests.enterprise.EnterpriseReportsTabTest"/>
+            <class name="tests.enterprise.EnterpriseRateCardTabTest"/>
+            <class name="tests.enterprise.EnterpriseControlCenterTabTest"/>
+            <class name="tests.enterprise.EnterpriseRCSAssistantFlowTest"/>
+            <class name="tests.enterprise.AssistantListTestCA"/>
+            <class name="tests.enterprise.MediaLibraryTest"/>
         </classes>
     </test>
 </suite>

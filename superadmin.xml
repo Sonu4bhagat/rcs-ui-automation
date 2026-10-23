@@ -6,12 +6,12 @@
     </listeners>
     <test name="SuperAdmin Context Tests" preserve-order="true">
         <classes>
-            <class name="tests.SuperAdminCustomerOrgTest"/>
-            <class name="tests.SuperAdminDashboardTest"/>
-            <class name="tests.SuperAdminRolesManagementTest"/>
-            <class name="tests.SuperAdminTeamManagementTest"/>
-            <class name="tests.SuperAdminAPIAndDocumentationTest"/>
-            <class name="tests.SuperAdminServiceNodeSSOTest"/>
+            <class name="tests.superadmin.SuperAdminCustomerOrgTest"/>
+            <class name="tests.superadmin.SuperAdminDashboardTest"/>
+            <class name="tests.superadmin.SuperAdminRolesManagementTest"/>
+            <class name="tests.superadmin.SuperAdminTeamManagementTest"/>
+            <class name="tests.superadmin.SuperAdminAPIAndDocumentationTest"/>
+            <class name="tests.superadmin.SuperAdminServiceNodeSSOTest"/>
         </classes>
     </test>
 </suite>

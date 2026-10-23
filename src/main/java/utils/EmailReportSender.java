@@ -130,7 +130,9 @@ public class EmailReportSender implements IReporter {
         }
 
         private ClassStats stats(ITestResult r) {
-            String name = r.getTestClass() != null ? simpleName(r.getTestClass().getName()) : "Unknown";
+            String name = r.getTestClass() != null
+                    ? "[" + ExtentReportManager.roleOf(r.getTestClass().getRealClass()) + "] " + simpleName(r.getTestClass().getName())
+                    : "Unknown";
             return byClass.computeIfAbsent(name, k -> new ClassStats());
         }
     }

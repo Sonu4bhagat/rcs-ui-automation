@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+    Reseller suite: all classes in src/test/java/tests/reseller.
+    Each class is its own <test>, so classes run one after another (same as testng.xml).
+    They all share one Reseller account, so running them in parallel makes them
+    interfere with each other (logout / wallet balance changes across sessions).
+-->
+<suite name="Reseller Automation Suite" verbose="1" parallel="classes" thread-count="4">
+    <listeners>
+        <listener class-name="utils.AnnotationTransformer"/>
+    </listeners>
+
+    <test name="Reseller Dashboard My Wallets" preserve-order="true">
+        <classes>
+            <class name="tests.reseller.ResellerDashboardMyWalletsTest"/>
+        </classes>
+    </test>
+
+    <test name="Reseller Dashboard Users" preserve-order="true">
+        <classes>
+            <class name="tests.reseller.ResellerDashboardUsersTest"/>
+        </classes>
+    </test>
+
+    <test name="Reseller Dashboard Analytics" preserve-order="true">
+        <classes>
+            <class name="tests.reseller.ResellerDashboardAnalyticsTest"/>
+        </classes>
+    </test>
+
+    <test name="Reseller Dashboard User Management" preserve-order="true">
+        <classes>
+            <class name="tests.reseller.ResellerDashboardUserManagementTest"/>
+        </classes>
+    </test>
+</suite>

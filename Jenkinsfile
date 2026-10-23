@@ -8,7 +8,7 @@ pipeline {
     }
 
     parameters {
-        choice(name: 'TEST_TO_RUN', choices: ['testng.xml', 'enterprise.xml', 'superadmin.xml', 'LoginTest'], description: 'Select specific test class (e.g. LoginTest) or TestNG XML suite file')
+        choice(name: 'TEST_TO_RUN', choices: ['testng.xml', 'enterprise.xml', 'reseller.xml', 'superadmin.xml', 'LoginTest'], description: 'testng.xml = all roles; enterprise.xml / reseller.xml / superadmin.xml = one role (tests/<role> folder); LoginTest = single class')
         booleanParam(name: 'HEADLESS', defaultValue: true, description: 'Run browser in headless mode')
         booleanParam(name: 'SEND_EMAIL', defaultValue: true, description: 'Send the execution summary email with the Extent report attached')
         string(name: 'EMAIL_RECIPIENTS', defaultValue: 'sonu.bhagat@altiquence.com,aryan.sonu7562@gmail.com', description: 'Comma-separated list of report recipients')

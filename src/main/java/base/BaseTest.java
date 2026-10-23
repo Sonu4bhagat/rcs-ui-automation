@@ -38,7 +38,7 @@ public class BaseTest {
         test = (description == null || description.isEmpty())
                 ? ExtentReportManager.createTest(ExtentReportManager.displayName(result))
                 : ExtentReportManager.createTest(ExtentReportManager.displayName(result), description);
-        test.assignCategory(getClass().getSimpleName());
+        test.assignCategory(ExtentReportManager.roleOf(getClass()), getClass().getSimpleName());
         // Lets ExtentReportManager.reconcileWithTestNG drop this entry if the attempt is later retried
         result.setAttribute(ExtentReportManager.RESULT_ATTRIBUTE, test);
         ExtentReportManager.resetStepCounter(); // Reset step counter for each new test

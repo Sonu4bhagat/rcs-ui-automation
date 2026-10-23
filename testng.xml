@@ -6,137 +6,139 @@
     </listeners>
     <!-- ExtentReports handled by BaseTest to avoid duplicate entries -->
     
-    <!-- Login Tests -->
+    <!-- ===== COMMON (all roles) : tests/common ===== -->
     <test name="Login Tests" preserve-order="true">
         <classes>
-            <class name="tests.LoginTest"/>
+            <class name="tests.common.LoginTest"/>
         </classes>
     </test>
     
-    <!-- Tests enabled -->
+    <!-- ===== ENTERPRISE : tests/enterprise ===== -->
     <test name="Enterprise Dashboard Navigation" preserve-order="true">
         <classes>
-            <class name="tests.EnterpriseDashboardNavigationTest"/>
+            <class name="tests.enterprise.EnterpriseDashboardNavigationTest"/>
         </classes>
     </test>
     
     <test name="Enterprise Services Tab" preserve-order="true">
         <classes>
-            <class name="tests.EnterpriseServicesTabTest"/>
+            <class name="tests.enterprise.EnterpriseServicesTabTest"/>
         </classes>
     </test>
     
     <test name="Enterprise API Documentation" preserve-order="true">
         <classes>
-            <class name="tests.EnterpriseAPIDocumentationTest"/>
+            <class name="tests.enterprise.EnterpriseAPIDocumentationTest"/>
         </classes>
     </test>
     
     <test name="Enterprise Wallet Tab" preserve-order="true">
         <classes>
-            <class name="tests.EnterpriseWalletTabTest"/>
+            <class name="tests.enterprise.EnterpriseWalletTabTest"/>
         </classes>
     </test>
     
     <test name="Enterprise Roles Management" preserve-order="true">
         <classes>
-            <class name="tests.EnterpriseRolesManagementTest"/>
+            <class name="tests.enterprise.EnterpriseRolesManagementTest"/>
         </classes>
     </test>
     
     <test name="Enterprise Reports Tab" preserve-order="true">
         <classes>
-            <class name="tests.EnterpriseReportsTabTest"/>
+            <class name="tests.enterprise.EnterpriseReportsTabTest"/>
         </classes>
     </test>
     
     <test name="Enterprise Rate Card Tab" preserve-order="true">
         <classes>
-            <class name="tests.EnterpriseRateCardTabTest"/>
+            <class name="tests.enterprise.EnterpriseRateCardTabTest"/>
         </classes>
     </test>
     
     <test name="Enterprise Control Center" preserve-order="true">
         <classes>
-            <class name="tests.EnterpriseControlCenterTabTest"/>
+            <class name="tests.enterprise.EnterpriseControlCenterTabTest"/>
         </classes>
     </test>
     
     <test name="Enterprise RCS Assistant Flow" preserve-order="true">
         <classes>
-            <class name="tests.EnterpriseRCSAssistantFlowTest"/>
+            <class name="tests.enterprise.EnterpriseRCSAssistantFlowTest"/>
         </classes>
     </test>
 
     <test name="Enterprise Assistant List CA" preserve-order="true">
         <classes>
-            <class name="tests.AssistantListTestCA"/>
+            <class name="tests.enterprise.AssistantListTestCA"/>
         </classes>
     </test>
 
     <test name="Media Library" preserve-order="true">
         <classes>
-            <class name="tests.MediaLibraryTest"/>
+            <class name="tests.enterprise.MediaLibraryTest"/>
         </classes>
     </test>
     
+    <!-- ===== SUPER ADMIN : tests/superadmin ===== -->
     <test name="Super Admin Customer Org" preserve-order="true">
         <classes>
-            <class name="tests.SuperAdminCustomerOrgTest"/>
+            <class name="tests.superadmin.SuperAdminCustomerOrgTest"/>
         </classes>
     </test>
     
     <test name="Super Admin Dashboard" preserve-order="true">
         <classes>
-            <class name="tests.SuperAdminDashboardTest"/>
+            <class name="tests.superadmin.SuperAdminDashboardTest"/>
         </classes>
     </test>
     
     <test name="Super Admin Roles Management" preserve-order="true">
         <classes>
-            <class name="tests.SuperAdminRolesManagementTest"/>
+            <class name="tests.superadmin.SuperAdminRolesManagementTest"/>
         </classes>
     </test>
     
     <test name="Super Admin Team Management" preserve-order="true">
         <classes>
-            <class name="tests.SuperAdminTeamManagementTest"/>
+            <class name="tests.superadmin.SuperAdminTeamManagementTest"/>
         </classes>
     </test>
     
     <test name="Super Admin API Documentation" preserve-order="true">
         <classes>
-            <class name="tests.SuperAdminAPIAndDocumentationTest"/>
+            <class name="tests.superadmin.SuperAdminAPIAndDocumentationTest"/>
         </classes>
     </test>
     
     <test name="Super Admin Service Node SSO" preserve-order="true">
         <classes>
-            <class name="tests.SuperAdminServiceNodeSSOTest"/>
+            <class name="tests.superadmin.SuperAdminServiceNodeSSOTest"/>
         </classes>
     </test>
 
+    <!-- ===== RESELLER : tests/reseller ===== -->
     <test name="Reseller Dashboard My Wallets" preserve-order="true">
         <classes>
-            <class name="tests.ResellerDashboardMyWalletsTest"/>
+            <class name="tests.reseller.ResellerDashboardMyWalletsTest"/>
         </classes>
     </test>
 
     <test name="Reseller Dashboard Users" preserve-order="true">
         <classes>
-            <class name="tests.ResellerDashboardUsersTest"/>
+            <class name="tests.reseller.ResellerDashboardUsersTest"/>
         </classes>
     </test>
 
     <test name="Reseller Dashboard Analytics" preserve-order="true">
         <classes>
-            <class name="tests.ResellerDashboardAnalyticsTest"/>
+            <class name="tests.reseller.ResellerDashboardAnalyticsTest"/>
         </classes>
     </test>
 
     <test name="Reseller Dashboard User Management" preserve-order="true">
         <classes>
-            <class name="tests.ResellerDashboardUserManagementTest"/>
+            <class name="tests.reseller.ResellerDashboardUserManagementTest"/>
         </classes>
     </test>
 

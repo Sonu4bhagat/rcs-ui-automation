@@ -1,4 +1,4 @@
-package tests;
+package tests.reseller;
 
 import base.BaseTest;
 import locators.ResellerDashboardUserManagementPageLocators;

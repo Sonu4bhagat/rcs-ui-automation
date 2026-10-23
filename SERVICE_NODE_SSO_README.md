@@ -27,7 +27,7 @@ This test suite validates the Service Node SSO (Single Sign-On) functionality fo
   - `isRedirectedToService()` - Validate successful redirection
 
 ### 3. **SuperAdminServiceNodeSSOTest.java**
-- **Location:** `src/test/java/tests/SuperAdminServiceNodeSSOTest.java`
+- **Location:** `src/test/java/tests/superadmin/SuperAdminServiceNodeSSOTest.java`
 - **Purpose:** TestNG test class for SSO validation
 - **Test Flow:**
   1. Login as Super Admin
@@ -80,7 +80,7 @@ Add to your `testng.xml`:
 ```xml
 <test name="Service Node SSO Tests">
     <classes>
-        <class name="tests.SuperAdminServiceNodeSSOTest"/>
+        <class name="tests.superadmin.SuperAdminServiceNodeSSOTest"/>
     </classes>
 </test>
 ```

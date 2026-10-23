@@ -26,12 +26,35 @@ RCS_Automation/
 │   │   ├── pages/             # Page Object Model classes
 │   │   └── utils/             # Utility classes
 │   └── test/java/
-│       ├── helpers/           # Test helper classes
-│       └── tests/             # Test classes
+│       ├── helpers/           # Test helper classes (shared across roles)
+│       └── tests/             # Test classes, one folder per user role
+│           ├── common/        #   Tests covering all roles (LoginTest)
+│           ├── enterprise/    #   Tests that log in as an Enterprise user
+│           ├── reseller/      #   Tests that log in as a Reseller user
+│           └── superadmin/    #   Tests that log in as Super Admin
 ├── pom.xml                    # Maven dependencies
-├── testng.xml                 # TestNG configuration
+├── testng.xml                 # Full suite (all roles)
+├── enterprise.xml             # Enterprise suite (tests/enterprise + LoginTest)
+├── reseller.xml               # Reseller suite (tests/reseller)
+├── superadmin.xml             # Super Admin suite (tests/superadmin)
 └── config.properties          # Application configuration
 ```
+
+### Where to add a new test
+
+1. Put the class in the folder of the user it **logs in as**: `tests/enterprise`, `tests/reseller` or `tests/superadmin`. Use `tests/common` only for tests that cover several roles.
+2. Set the package to match the folder, e.g. `package tests.reseller;`.
+3. Prefix the class name with the role, e.g. `ResellerDashboardWalletTest`.
+4. Register it in `testng.xml` **and** in that role's suite file (`enterprise.xml`, `reseller.xml` or `superadmin.xml`).
+
+The Extent report and the email summary group results by role automatically based on the folder.
+
+### Running one role
+
+```bash
+mvn test -DsuiteXmlFile=reseller.xml        # or enterprise.xml / superadmin.xml / testng.xml
+```
+In Jenkins, choose the suite in the `TEST_TO_RUN` parameter.
 
 ---
 

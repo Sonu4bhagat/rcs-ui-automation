@@ -1,4 +1,4 @@
-package tests;
+package tests.enterprise;
 
 import base.BaseTest;
 import helpers.EnterpriseReportsHelper;

@@ -158,6 +158,23 @@ public class ExtentReportManager {
     /** ITestResult attribute holding the ExtentTest created for that result in BaseTest. */
     public static final String RESULT_ATTRIBUTE = "extent.test";
 
+    /**
+     * User role a test class belongs to, derived from its folder (package) under tests/:
+     * tests.enterprise -> "Enterprise", tests.reseller -> "Reseller",
+     * tests.superadmin -> "Super Admin", tests.common -> "Common".
+     */
+    public static String roleOf(Class<?> testClass) {
+        String pkg = testClass.getPackage() != null ? testClass.getPackage().getName() : "";
+        String folder = pkg.substring(pkg.lastIndexOf('.') + 1);
+        switch (folder) {
+            case "enterprise": return "Enterprise";
+            case "reseller": return "Reseller";
+            case "superadmin": return "Super Admin";
+            case "common": return "Common";
+            default: return "Other";
+        }
+    }
+
     /** Report name used for a test, e.g. "LoginTest :: verifyValidLogin". */
     public static String displayName(ITestResult result) {
         return result.getTestClass().getRealClass().getSimpleName() + " :: " + result.getMethod().getMethodName();
@@ -191,7 +208,7 @@ public class ExtentReportManager {
                     }
                     if (logged == null) {
                         ExtentTest t = reports.createTest(displayName(r))
-                                .assignCategory(r.getTestClass().getRealClass().getSimpleName());
+                                .assignCategory(roleOf(r.getTestClass().getRealClass()), r.getTestClass().getRealClass().getSimpleName());
                         Status status = r.getStatus() == ITestResult.SUCCESS ? Status.PASS
                                 : r.getStatus() == ITestResult.SKIP ? Status.SKIP : Status.FAIL;
                         t.log(status, "Test " + status.toString().toLowerCase() + " (no test steps were executed)");
@@ -203,7 +220,7 @@ public class ExtentReportManager {
 
                 for (ITestResult r : ctx.getFailedConfigurations().getAllResults()) {
                     ExtentTest t = reports.createTest("[Setup/Teardown] " + displayName(r))
-                            .assignCategory(r.getTestClass().getRealClass().getSimpleName());
+                            .assignCategory(roleOf(r.getTestClass().getRealClass()), r.getTestClass().getRealClass().getSimpleName());
                     t.fail("Configuration method failed; dependent tests were skipped.");
                     if (r.getThrowable() != null) {
                         t.fail(r.getThrowable());
