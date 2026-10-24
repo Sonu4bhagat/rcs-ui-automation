@@ -2,6 +2,15 @@
 // stops before that (checkout/compile error, timeout, abort), post{} sends a short notification instead.
 def testsCompleted = false
 
+// SUITE parameter value -> TestNG suite file (one folder per user role under src/test/java/tests)
+def SUITE_FILES = [
+    'All Tests'  : 'testng.xml',
+    'Common'     : 'common.xml',
+    'Enterprise' : 'enterprise.xml',
+    'Reseller'   : 'reseller.xml',
+    'Super Admin': 'superadmin.xml'
+]
+
 pipeline {
     agent any
 
@@ -12,7 +21,14 @@ pipeline {
     }
 
     parameters {
-        choice(name: 'TEST_TO_RUN', choices: ['testng.xml', 'enterprise.xml', 'reseller.xml', 'superadmin.xml', 'LoginTest'], description: 'testng.xml = all roles; enterprise.xml / reseller.xml / superadmin.xml = one role (tests/<role> folder); LoginTest = single class')
+        choice(name: 'SUITE', choices: ['All Tests', 'Common', 'Enterprise', 'Reseller', 'Super Admin', 'Single Test Class'],
+               description: '''Which tests to run:
+All Tests = every portal (testng.xml)
+Common = tests covering all roles, e.g. login (common.xml)
+Enterprise / Reseller / Super Admin = one portal only (enterprise.xml / reseller.xml / superadmin.xml)
+Single Test Class = only the class named in TEST_CLASS below''')
+        string(name: 'TEST_CLASS', defaultValue: '',
+               description: 'Only used when SUITE = "Single Test Class". Class name, e.g. LoginTest or ResellerDashboardAnalyticsTest. Several: LoginTest,SuperAdminDashboardTest. One method: LoginTest#testSuperAdminLogin')
         booleanParam(name: 'HEADLESS', defaultValue: true, description: 'Run browser in headless mode')
         booleanParam(name: 'SEND_EMAIL', defaultValue: true, description: 'Send the execution summary email with the Extent report attached')
         string(name: 'EMAIL_RECIPIENTS', defaultValue: 'sonu.bhagat@altiquence.com,aryan.sonu7562@gmail.com', description: 'Comma-separated list of report recipients')
@@ -59,12 +75,20 @@ pipeline {
                         def commonArgs = "-B -Dbrowser.headless=${params.HEADLESS} -Dmaven.test.failure.ignore=true " +
                                 "\"-Demail.enable=${params.SEND_EMAIL}\" \"-Demail.recipients=${recipients}\""
 
-                        if (params.TEST_TO_RUN.endsWith('.xml')) {
-                            echo "Executing TestNG Suite File: ${params.TEST_TO_RUN} (Headless: ${params.HEADLESS})..."
-                            bat "mvn test -DsuiteXmlFile=${params.TEST_TO_RUN} ${commonArgs}"
+                        if (params.SUITE == 'Single Test Class') {
+                            def testClass = (params.TEST_CLASS ?: '').trim()
+                            // Only class/method names - the value is passed to cmd.exe
+                            if (!(testClass ==~ /[A-Za-z0-9_.#,*+]+/)) {
+                                error "SUITE is 'Single Test Class' but TEST_CLASS is empty or invalid: '${testClass}'. Example: LoginTest"
+                            }
+                            currentBuild.description = "Class: ${testClass}"
+                            echo "Executing test class: ${testClass} (Headless: ${params.HEADLESS})..."
+                            bat "mvn test -Dtest=${testClass} ${commonArgs}"
                         } else {
-                            echo "Executing Test Class: ${params.TEST_TO_RUN} (Headless: ${params.HEADLESS})..."
-                            bat "mvn test -Dtest=${params.TEST_TO_RUN} ${commonArgs}"
+                            def suiteFile = SUITE_FILES[params.SUITE]
+                            currentBuild.description = "${params.SUITE} (${suiteFile})"
+                            echo "Executing ${params.SUITE} suite: ${suiteFile} (Headless: ${params.HEADLESS})..."
+                            bat "mvn test -DsuiteXmlFile=${suiteFile} ${commonArgs}"
                         }
                         testsCompleted = true
                     }
@@ -98,7 +122,7 @@ timeout or a manual abort) - it is not a test result.
 Job Name     : ${env.JOB_NAME}
 Build Number : #${env.BUILD_NUMBER}
 Build Status : ${currentBuild.currentResult}
-Test Scope   : ${params.TEST_TO_RUN}
+Test Scope   : ${params.SUITE == 'Single Test Class' ? 'Single test class: ' + params.TEST_CLASS : params.SUITE}
 Duration     : ${currentBuild.durationString.replace(' and counting', '')}
 
 Console Output (cause of the error):

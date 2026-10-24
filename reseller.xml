@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <!--
-    Reseller suite: all classes in src/test/java/tests/reseller.
+    Reseller suite: all classes in src/test/java/tests/reseller (generated from testng.xml - keep in sync).
     Each class is its own <test>, so classes run one after another (same as testng.xml).
-    They all share one Reseller account, so running them in parallel makes them
-    interfere with each other (logout / wallet balance changes across sessions).
+    Classes share one login per role, so running them in parallel makes them log each other out.
 -->
 <suite name="Reseller Automation Suite" verbose="1" parallel="classes" thread-count="4">
     <listeners>

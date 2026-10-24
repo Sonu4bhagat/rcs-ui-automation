@@ -54,7 +54,8 @@ RCS_Automation/
 │   └── api/           REST API tests (not part of the UI suites)
 ├── src/test/resources/config.properties
 ├── testng.xml         Full suite (all roles)
-├── enterprise.xml     Enterprise suite (+ LoginTest)
+├── common.xml         Common suite (tests covering all roles)
+├── enterprise.xml     Enterprise suite
 ├── reseller.xml       Reseller suite
 ├── superadmin.xml     Super Admin suite
 ├── Jenkinsfile        CI pipeline
@@ -102,7 +103,7 @@ Settings are read from `src/test/resources/config.properties`. Any key can be ov
 mvn clean test -DsuiteXmlFile=testng.xml
 
 # One role
-mvn test -DsuiteXmlFile=enterprise.xml      # or reseller.xml / superadmin.xml
+mvn test -DsuiteXmlFile=enterprise.xml      # or common.xml / reseller.xml / superadmin.xml
 
 # One class, or one method
 mvn test -Dtest=ResellerDashboardAnalyticsTest
@@ -120,7 +121,8 @@ The pipeline ([Jenkinsfile](Jenkinsfile)) checks out `main`, compiles and runs t
 
 | Parameter | Default | Purpose |
 |---|---|---|
-| `TEST_TO_RUN` | `testng.xml` | Suite (`testng.xml`, `enterprise.xml`, `reseller.xml`, `superadmin.xml`) or a single class (`LoginTest`) |
+| `SUITE` | `All Tests` | `All Tests`, `Common`, `Enterprise`, `Reseller`, `Super Admin`, or `Single Test Class` |
+| `TEST_CLASS` | empty | Only for `Single Test Class`: e.g. `LoginTest`, `LoginTest,SuperAdminDashboardTest`, or `LoginTest#testSuperAdminLogin` |
 | `HEADLESS` | `true` | Headless Chrome |
 | `SEND_EMAIL` | `true` | Send the summary email |
 | `EMAIL_RECIPIENTS` | team list | Comma-separated recipients |

@@ -259,18 +259,22 @@ public class EmailReportSender implements IReporter {
             b.number = Optional.ofNullable(env("BUILD_NUMBER")).orElse("local");
             String url = env("BUILD_URL");
             b.buildUrl = url == null ? null : (url.endsWith("/") ? url : url + "/");
-            // Jenkins exposes the TEST_TO_RUN build parameter as an environment variable
-            b.suite = describeSuite(Optional.ofNullable(env("TEST_TO_RUN"))
-                    .orElse(System.getProperty("suiteXmlFile", System.getProperty("test", "testng.xml"))));
+            // Jenkins exposes the SUITE / TEST_CLASS build parameters as environment variables
+            String testClass = env("TEST_CLASS");
+            b.suite = "Single Test Class".equals(env("SUITE")) && testClass != null
+                    ? "Single test class (" + testClass + ")"
+                    : describeSuite(Optional.ofNullable(env("SUITE"))
+                            .orElse(System.getProperty("suiteXmlFile", System.getProperty("test", "testng.xml"))));
             return b;
         }
 
         private static String describeSuite(String suite) {
             switch (suite) {
-                case "testng.xml": return "Full regression - all portals (testng.xml)";
-                case "enterprise.xml": return "Enterprise portal (enterprise.xml)";
-                case "reseller.xml": return "Reseller portal (reseller.xml)";
-                case "superadmin.xml": return "Super Admin portal (superadmin.xml)";
+                case "All Tests": case "testng.xml": return "Full regression - all portals (testng.xml)";
+                case "Common": case "common.xml": return "Common tests - all roles (common.xml)";
+                case "Enterprise": case "enterprise.xml": return "Enterprise portal (enterprise.xml)";
+                case "Reseller": case "reseller.xml": return "Reseller portal (reseller.xml)";
+                case "Super Admin": case "superadmin.xml": return "Super Admin portal (superadmin.xml)";
                 default: return "Single test class (" + suite + ")";
             }
         }
