@@ -206,7 +206,11 @@ public class ExtentReportManager {
                         }
                         continue;
                     }
-                    if (logged == null) {
+                    if (logged instanceof ExtentTest) {
+                        // Final attempt logged by BaseTest: categorise it now (see BaseTest.beforeEachTest)
+                        ((ExtentTest) logged).assignCategory(roleOf(r.getTestClass().getRealClass()),
+                                r.getTestClass().getRealClass().getSimpleName());
+                    } else if (logged == null) {
                         ExtentTest t = reports.createTest(displayName(r))
                                 .assignCategory(roleOf(r.getTestClass().getRealClass()), r.getTestClass().getRealClass().getSimpleName());
                         Status status = r.getStatus() == ITestResult.SUCCESS ? Status.PASS

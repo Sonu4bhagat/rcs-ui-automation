@@ -44,3 +44,9 @@ test-output/screenshots/
 ### Logs ###
 *.log
 logs/
+
+### IDE settings (per developer) ###
+.idea/
+
+### JVM crash dumps ###
+hs_err_pid*.log

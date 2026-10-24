@@ -21,24 +21,10 @@
 
     <dependencies>
 
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.36</version>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- Selenium WebDriver -->
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-java</artifactId>
-            <version>4.29.0</version>
-        </dependency>
-        <!-- Add DevTools to suppress CDP warning -->
-        <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-devtools-v133</artifactId>
             <version>4.29.0</version>
         </dependency>
 
@@ -77,30 +63,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Apache Commons IO -->
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.15.1</version>
-        </dependency>
-
-        <!-- Hamcrest (optional assertions) -->
-        <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest</artifactId>
-            <version>2.2</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- AssertJ (optional fluent assertions) -->
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <version>3.25.3</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- ExtentReports -->
+        <!-- ExtentReports (FreeMarker is required by the Spark HTML reporter) -->
         <dependency>
             <groupId>org.freemarker</groupId>
             <artifactId>freemarker</artifactId>
@@ -111,6 +74,14 @@
             <groupId>com.aventstack</groupId>
             <artifactId>extentreports</artifactId>
             <version>5.0.9</version>
+            <exclusions>
+                <!-- ExtentReports 5.0.9 wrongly ships Lombok 1.18.12 as a compile dependency; that old
+                     annotation processor breaks compilation on Java 17. Extent doesn't need it at runtime. -->
+                <exclusion>
+                    <groupId>org.projectlombok</groupId>
+                    <artifactId>lombok</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Email Support -->
@@ -159,9 +130,6 @@
                 <version>3.11.0</version>
                 <configuration>
                     <release>17</release>
-                    <compilerArgs>
-                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
-                    </compilerArgs>
                 </configuration>
             </plugin>
 

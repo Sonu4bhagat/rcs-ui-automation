@@ -197,7 +197,9 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
 
         Assert.assertFalse(headers.isEmpty(), "Profile table should have headers");
 
-        List<String> expectedHeaders = Arrays.asList("Role Name", "Created On", "Assigned Services", "Status");
+        // Confirmed live (Oct 2026): Name | Role | Created On | Wallets | Services | Status | Actions
+        // (previously "Role Name" and "Assigned Services")
+        List<String> expectedHeaders = Arrays.asList("Name", "Role", "Created On", "Wallets", "Services", "Status");
 
         org.testng.asserts.SoftAssert softAssert = new org.testng.asserts.SoftAssert();
         for (String expected : expectedHeaders) {
@@ -246,27 +248,33 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
             System.err.println("Could not check table rows: " + e.getMessage());
         }
 
-        boolean contentVisible = customerOrgPage.clickViewIconAndVerifyContent();
+        boolean contentVisible;
+        try {
+            contentVisible = customerOrgPage.clickViewIconAndVerifyContent();
 
-        if (!contentVisible) {
-            System.err.println("⚠ View icon did not show content or element not found");
-            // Take screenshot for debugging
-            try {
+            if (!contentVisible) {
+                System.err.println("⚠ View icon did not show content or element not found");
                 System.err.println("Current URL: " + driver.getCurrentUrl());
-            } catch (Exception e) {
+            }
+        } finally {
+            // Always return to the Profiles list, so the Search / Filter / Add New tests that follow
+            // don't run on the view page (View opens a separate page, older UI used a modal)
+            if (driver.getCurrentUrl().contains("/profile/view/")) {
+                driver.navigate().back();
+                new WebDriverWait(driver, Duration.ofSeconds(15)).until(ExpectedConditions
+                        .visibilityOfElementLocated(locators.superadmin.CustomerOrgPageLocators.PROFILE_SEARCH_FIELD));
+            } else {
+                try {
+                    driver.findElement(By.tagName("body")).sendKeys(Keys.ESCAPE);
+                    Thread.sleep(500);
+                } catch (Exception e) {
+                    // No modal open
+                }
             }
         }
 
-        Assert.assertTrue(contentVisible, "At least one text element should be visible after clicking view icon");
+        Assert.assertTrue(contentVisible, "Profile details should be shown after clicking the View icon");
         System.out.println("✓ View icon functional and content verified");
-
-        // Close modal if needed (press ESC or click close button)
-        try {
-            driver.findElement(By.tagName("body")).sendKeys(Keys.ESCAPE);
-            Thread.sleep(500);
-        } catch (Exception e) {
-            // Modal might close automatically or no modal present
-        }
     }
 
     @Test(priority = 11, description = "Verify Search Field", dependsOnMethods = "testNavigateToProfileTab", alwaysRun = true)

@@ -45,7 +45,8 @@ public class BaseTest {
         test = (description == null || description.isEmpty())
                 ? ExtentReportManager.createTest(ExtentReportManager.displayName(result))
                 : ExtentReportManager.createTest(ExtentReportManager.displayName(result), description);
-        test.assignCategory(ExtentReportManager.roleOf(getClass()), getClass().getSimpleName());
+        // Role/class categories are assigned in ExtentReportManager.reconcileWithTestNG, only to final
+        // results - Extent keeps a removed (retried) test in its category views if it was categorised.
         // Lets ExtentReportManager.reconcileWithTestNG drop this entry if the attempt is later retried
         result.setAttribute(ExtentReportManager.RESULT_ATTRIBUTE, test);
         ExtentReportManager.resetStepCounter(); // Reset step counter for each new test

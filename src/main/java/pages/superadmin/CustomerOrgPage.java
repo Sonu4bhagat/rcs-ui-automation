@@ -811,6 +811,18 @@ public class CustomerOrgPage {
             // Wait for modal/content to appear
             Thread.sleep(1500);
 
+            // Confirmed live: View now opens a separate page (.../profile/view/{id}) showing the
+            // profile Overview (Contact Info, Email Address, Account Information) - not a modal.
+            if (driver.getCurrentUrl().contains("/profile/view/")) {
+                String overview = wait.until(d -> {
+                    String text = d.findElement(CustomerOrgPageLocators.PROFILE_VIEW_PAGE_PANEL).getText();
+                    return text.contains("Contact Info") ? text : null;
+                });
+                System.out.println("✓ Profile view page opened with Overview details");
+                return overview.toUpperCase().contains("EMAIL ADDRESS");
+            }
+
+            // Older UI: details shown in a modal
             // Check if any text content is visible
             List<WebElement> textElements = driver.findElements(CustomerOrgPageLocators.PROFILE_VIEW_MODAL_TEXT);
 
@@ -1024,6 +1036,14 @@ public class CustomerOrgPage {
                 wait.until(ExpectedConditions.invisibilityOfElementLocated(By.tagName("mat-progress-bar")));
                 Thread.sleep(1000); // Allow rows to finish rendering
             } catch (Exception e) {
+            }
+
+            // The table first renders a "There is no data available" placeholder and fills in the
+            // roles when the API responds - wait (up to 10s) for real rows before tests count them.
+            try {
+                new WebDriverWait(driver, Duration.ofSeconds(10)).until(d -> getRolesTableRowCount() > 0);
+            } catch (TimeoutException e) {
+                System.out.println("Roles table still shows no data after waiting - treating it as empty");
             }
 
             System.out.println("✓ Roles table is visible");
@@ -1341,6 +1361,10 @@ public class CustomerOrgPage {
 
     public String getFirstRoleName() {
         System.out.println("Fetching first role name from table...");
+        if (getRolesTableRowCount() == 0) {
+            // Only the "There is no data available" placeholder row - not a role name
+            return "";
+        }
         try {
             // Wait for any previous animation to finish and table to be visible
             WebElement firstRoleCell = wait.until(ExpectedConditions

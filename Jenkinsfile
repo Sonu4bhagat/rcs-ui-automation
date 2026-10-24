@@ -1,3 +1,7 @@
+// Set once the test run finishes. The test run itself sends the detailed report email; if the build
+// stops before that (checkout/compile error, timeout, abort), post{} sends a short notification instead.
+def testsCompleted = false
+
 pipeline {
     agent any
 
@@ -15,7 +19,7 @@ pipeline {
     }
 
     environment {
-        MAVEN_OPTS = "-Xmx2048m --add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED"
+        MAVEN_OPTS = "-Xmx2048m"
     }
 
     stages {
@@ -62,6 +66,7 @@ pipeline {
                             echo "Executing Test Class: ${params.TEST_TO_RUN} (Headless: ${params.HEADLESS})..."
                             bat "mvn test -Dtest=${params.TEST_TO_RUN} ${commonArgs}"
                         }
+                        testsCompleted = true
                     }
                 }
             }
@@ -76,6 +81,35 @@ pipeline {
 
             // Parse JUnit results for Jenkins trend charts (TEST-*.xml only; testng-results.xml is not JUnit format)
             junit testResults: 'target/surefire-reports/TEST-*.xml', allowEmptyResults: true
+
+            script {
+                if (params.SEND_EMAIL && !testsCompleted) {
+                    // Uses Jenkins' own mail settings (Manage Jenkins > System > E-mail Notification).
+                    try {
+                        mail to: params.EMAIL_RECIPIENTS,
+                             charset: 'UTF-8',
+                             subject: "[BUILD ERROR] Jenkins: ${env.JOB_NAME} #${env.BUILD_NUMBER} - automated tests did not complete",
+                             body: """RCS Automation - Build Error
+
+The automated test run did not complete, so no test report was produced for this build.
+This usually means the build failed before or during the test run (code checkout, compilation,
+timeout or a manual abort) - it is not a test result.
+
+Job Name     : ${env.JOB_NAME}
+Build Number : #${env.BUILD_NUMBER}
+Build Status : ${currentBuild.currentResult}
+Test Scope   : ${params.TEST_TO_RUN}
+Duration     : ${currentBuild.durationString.replace(' and counting', '')}
+
+Console Output (cause of the error):
+${env.BUILD_URL}console
+
+This is an automated email from Jenkins"""
+                    } catch (err) {
+                        echo "Build-error email not sent (configure Manage Jenkins > System > E-mail Notification): ${err.message}"
+                    }
+                }
+            }
         }
     }
 }

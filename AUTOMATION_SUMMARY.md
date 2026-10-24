@@ -1,82 +1,51 @@
-# SmartPing RCS Automation - Executive Summary
+# RCS Automation — Summary
 
-**Date:** January 11, 2026  
-**Audience:** Managers, Leads, and Stakeholders
-
----
-
-## 🎯 Executive Overview
-
-This document provides a high-level view of the **RCS Automation Framework**, designed to ensure the reliability, stability, and quality of the SmartPing RCS Platform. The framework provides comprehensive regression testing for both **Super Admin** and **Enterprise** portals, allowing for faster release cycles and reduced manual testing effort.
-
-## 📊 Current Status & Coverage
-
-The automation suite currently covers **~200 test cases** across **15+ critical modules**.
-
-### ✅ Super Admin Portal Coverage
-| Module | Status | Key Features Tested |
-|:---|:---:|:---|
-| **Login/Auth** | ✅ Complete | Login, Logout, Session Security |
-| **Dashboard** | ✅ Complete | Stats loading, Navigation |
-| **Customer Org** | ✅ Complete | List view, Drill-down, Filtering, Profile |
-| **Team Management** | ✅ Complete | Add/Edit/Delete Members, Permissions |
-| **Roles Management** | ✅ Complete | Role Creation, Permission Mapping, SSO |
-| **Service Node SSO** | ✅ Complete | Auto-discovery of services, SSO Redirection |
-| **API Docs** | ✅ Complete | Swagger UI availability, Documentation links |
-
-### ✅ Enterprise Portal Coverage
-| Module | Status | Key Features Tested |
-|:---|:---:|:---|
-| **Services** | ✅ Complete | SMS, RCS, WABA, IVR, OBD, CCS (Details & SSO) |
-| **Wallet** | ✅ Complete | Balance check, Refill/Deduct, Transaction History |
-| **Reports** | ✅ Complete | Generation & Download for all service types |
-| **Rate Cards** | ✅ Complete | Viewing & Downloading rates |
-| **Control Center** | ✅ Complete | Team Management within Enterprise |
-| **Roles (Ent)** | ✅ Complete | Enterprise-level Role Management |
+**Audience:** QA leads, engineering managers
+**Scope:** UI regression of the SmartPing RCS platform (staging) for the Super Admin, Enterprise and Reseller portals.
+Technical details: [README.md](README.md) · Full test list: [TEST_CASE_INVENTORY.md](TEST_CASE_INVENTORY.md)
 
 ---
 
-## 🚀 Key Benefits (ROI)
+## Coverage
 
-*   **Speed**: Full regression suite runs in **~15-20 minutes** (vs. 4-6 hours manually).
-*   **Reliability**: Eliminates human error in repetitive checks (e.g., verifying 30+ service links).
-*   **Immediate Feedback**: detailed reports are generated instantly after execution.
-*   **Scalability**: New services (e.g., WhatsApp) can be added to the test suite in minutes.
+**305 automated test cases in 22 test classes.**
 
----
+| Portal | Test classes | Test cases | Modules |
+|---|---:|---:|---|
+| Common (all roles) | 1 | 6 | Login for each role, invalid-credential and blank-field validation |
+| Enterprise | 11 | 164 | Dashboard navigation, Services (SMS, RCS, WABA, IVR, OBD, CCS), Wallet, Reports, Rate Card, Control Center, Roles Management, API Documentation, RCS Assistant flow, Assistant list, Media Library |
+| Reseller | 4 | 62 | My Wallets, Users, Analytics, User Management (wallets, services, refill/deduct, organisation details, profiles, roles) |
+| Super Admin | 6 | 73 | Dashboard, Customer Org (drill-down, wallets, profiles, roles), Team Management, Roles Management, Service Node SSO, API Documentation |
 
-## 📑 Reports & Visibility
-
-The framework generates a **business-friendly HTML report** after every run.
-
-**Report Location:** `test-output/ExtentReport.html`
-
-**What the Report Contains:**
-1.  **Dashboard View**: Pass/Fail charts and execution time.
-2.  **Detailed Steps**: Step-by-step logs of every action performed.
-3.  **Screenshots**: Automatic screenshots captured for any failure.
-4.  **Environment Info**: Browser version, OS, and User details.
+REST API tests exist under `src/test/java/api` but are not yet part of the regression suites.
 
 ---
 
-## 🏃‍♂️ How to Trigger
+## How it runs
 
-For Leads/Managers who need to run a quick health check:
+- **Jenkins pipeline** with a choice of suite: everything, or one portal at a time (`enterprise.xml`, `reseller.xml`, `superadmin.xml`).
+- **Headless Chrome**, so it runs on the Jenkins agent without a display.
+- **Email summary after every Jenkins build**: pass/fail counts, pass rate, results per portal and class, failed and skipped tests with reasons, and the detailed HTML report attached.
+- **Detailed HTML report** (Extent) with step-by-step logs and a screenshot for every failure.
 
-**Option 1: Run Everything (Full Regression)**
-```bash
-mvn clean test
-```
+## Reliability measures
 
-**Option 2: Run Specific Module (e.g., Wallet)**
-```bash
-mvn test -Dtest=EnterpriseWalletTabTest
-```
+- Each failing test is retried once; only the final result is reported.
+- If the browser crashes, a new one is started for the next test.
+- If a session ends unexpectedly, selected test classes log in again and continue instead of failing every remaining test.
 
 ---
 
-## 📞 Point of Contact
+## Current limitations and next steps
 
-For detailed technical documentation, please refer to the [Technical README](README.md) or [Test Case Inventory](TEST_CASE_INVENTORY.md).
+| Item | Impact | Proposed action |
+|---|---|---|
+| Test accounts are shared with manual users and other runs | A login elsewhere can end a running test's session and cause unrelated failures | Dedicated automation-only accounts per role |
+| Credentials are stored in the repository configuration file | Security exposure | Move to Jenkins credentials / environment variables; rotate the current passwords |
+| Many fixed waits (`Thread.sleep`) | Longer runs and occasional timing failures | Replace with condition-based waits as tests are touched |
+| Some tests pass without checking anything when data is missing (e.g. empty tables) | Coverage gaps can go unnoticed | Review and make these explicit skips or failures |
+| API tests not in any suite | API regressions are not caught | Add an API suite to the pipeline |
 
-**QA Team:** SmartPing Automation Squad
+## Execution time
+
+Full-suite duration: **[to be measured from the Jenkins build history]**

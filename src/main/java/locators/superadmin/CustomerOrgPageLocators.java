@@ -47,6 +47,8 @@ public class CustomerOrgPageLocators {
                         "//button[contains(@mattooltip, 'Edit') or .//mat-icon[text()='edit']] | " +
                                         "//table//tbody//tr[1]//button[.//mat-icon[text()='edit']]");
         public static final By PROFILE_VIEW_ICON = By.cssSelector("button[mattooltip='View']");
+        // Content area of the profile view page (.../profile/view/{id})
+        public static final By PROFILE_VIEW_PAGE_PANEL = By.tagName("mat-tab-nav-panel");
 
         // Profile Tab - Search Field
         public static final By PROFILE_SEARCH_FIELD = By.xpath(

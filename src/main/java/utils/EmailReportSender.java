@@ -62,11 +62,13 @@ public class EmailReportSender implements IReporter {
     // ------------------------------------------------------------------ results
 
     static final class Row {
+        final String role;
         final String className;
         final String methodName;
         final String detail;
 
         Row(ITestResult r) {
+            this.role = r.getTestClass() != null ? ExtentReportManager.roleOf(r.getTestClass().getRealClass()) : "";
             this.className = r.getTestClass() != null ? simpleName(r.getTestClass().getName()) : "";
             this.methodName = r.getMethod().getMethodName();
             this.detail = errorMessage(r.getThrowable());
@@ -74,7 +76,11 @@ public class EmailReportSender implements IReporter {
     }
 
     static final class ClassStats {
-        int passed, failed, skipped;
+        int passed, failed, skipped, setupFailures;
+
+        int total() {
+            return passed + failed + skipped;
+        }
     }
 
     static final class Summary {
@@ -82,6 +88,8 @@ public class EmailReportSender implements IReporter {
         final List<Row> skipped = new ArrayList<>();
         final List<Row> configFailures = new ArrayList<>();
         final Map<String, ClassStats> byClass = new TreeMap<>();
+        // Per portal (role folder), in a fixed order so every email reads the same way
+        final Map<String, ClassStats> byRole = new LinkedHashMap<>();
         int passed;
         Date start;
         Date end;
@@ -92,6 +100,9 @@ public class EmailReportSender implements IReporter {
 
         static Summary from(List<ISuite> suites) {
             Summary s = new Summary();
+            for (String role : new String[] { "Common", "Enterprise", "Reseller", "Super Admin" }) {
+                s.byRole.put(role, new ClassStats());
+            }
             for (ISuite suite : suites) {
                 for (ISuiteResult sr : suite.getResults().values()) {
                     ITestContext ctx = sr.getTestContext();
@@ -104,21 +115,25 @@ public class EmailReportSender implements IReporter {
                     for (ITestResult r : ctx.getPassedTests().getAllResults()) {
                         s.passed++;
                         s.stats(r).passed++;
+                        s.roleStats(r).passed++;
                     }
                     List<ITestResult> failures = new ArrayList<>(ctx.getFailedTests().getAllResults());
                     failures.addAll(ctx.getFailedButWithinSuccessPercentageTests().getAllResults());
                     for (ITestResult r : failures) {
                         s.failed.add(new Row(r));
                         s.stats(r).failed++;
+                        s.roleStats(r).failed++;
                     }
                     for (ITestResult r : ctx.getSkippedTests().getAllResults()) {
                         // Attempts that RetryAnalyzer re-ran are reported as SKIP; the final attempt is counted instead.
                         if (r.wasRetried()) continue;
                         s.skipped.add(new Row(r));
                         s.stats(r).skipped++;
+                        s.roleStats(r).skipped++;
                     }
                     for (ITestResult r : ctx.getFailedConfigurations().getAllResults()) {
                         s.configFailures.add(new Row(r));
+                        s.roleStats(r).setupFailures++;
                     }
                 }
             }
@@ -134,6 +149,11 @@ public class EmailReportSender implements IReporter {
                     ? "[" + ExtentReportManager.roleOf(r.getTestClass().getRealClass()) + "] " + simpleName(r.getTestClass().getName())
                     : "Unknown";
             return byClass.computeIfAbsent(name, k -> new ClassStats());
+        }
+
+        private ClassStats roleStats(ITestResult r) {
+            String role = r.getTestClass() != null ? ExtentReportManager.roleOf(r.getTestClass().getRealClass()) : "Other";
+            return byRole.computeIfAbsent(role, k -> new ClassStats());
         }
     }
 
@@ -198,7 +218,8 @@ public class EmailReportSender implements IReporter {
             MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress(senderEmail, "Jenkins"));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipients));
-            message.setSubject(statusEmoji + " Jenkins: " + build.jobName + " #" + build.number + " - " + status, "UTF-8");
+            message.setSubject(statusEmoji + " Jenkins: " + build.jobName + " #" + build.number + " - " + status
+                    + " | Passed " + summary.passed + "/" + summary.total() + " (" + passRate(summary) + ")", "UTF-8");
             message.setSentDate(new Date());
 
             MimeMultipart multipart = new MimeMultipart("mixed");
@@ -230,6 +251,7 @@ public class EmailReportSender implements IReporter {
         String jobName;
         String number;
         String buildUrl;
+        String suite;
 
         static BuildInfo fromEnvironment() {
             BuildInfo b = new BuildInfo();
@@ -237,7 +259,20 @@ public class EmailReportSender implements IReporter {
             b.number = Optional.ofNullable(env("BUILD_NUMBER")).orElse("local");
             String url = env("BUILD_URL");
             b.buildUrl = url == null ? null : (url.endsWith("/") ? url : url + "/");
+            // Jenkins exposes the TEST_TO_RUN build parameter as an environment variable
+            b.suite = describeSuite(Optional.ofNullable(env("TEST_TO_RUN"))
+                    .orElse(System.getProperty("suiteXmlFile", System.getProperty("test", "testng.xml"))));
             return b;
+        }
+
+        private static String describeSuite(String suite) {
+            switch (suite) {
+                case "testng.xml": return "Full regression - all portals (testng.xml)";
+                case "enterprise.xml": return "Enterprise portal (enterprise.xml)";
+                case "reseller.xml": return "Reseller portal (reseller.xml)";
+                case "superadmin.xml": return "Super Admin portal (superadmin.xml)";
+                default: return "Single test class (" + suite + ")";
+            }
         }
 
         /** Jenkins sets JOB_NAME and BUILD_NUMBER for every build step; local IDE/Maven runs do not. */
@@ -257,10 +292,37 @@ public class EmailReportSender implements IReporter {
         StringBuilder t = new StringBuilder();
         t.append(LINE).append("   RCS Automation Test Report ").append(statusEmoji).append("\n").append(LINE).append("\n");
 
+        // Plain-language summary first, for readers outside QA (management, developers)
+        t.append("OVERALL RESULT\n").append(THIN);
+        t.append("Result       : ").append(statusEmoji).append(" ").append(verdict(s)).append("\n");
+        t.append("Pass Rate    : ").append(passRate(s)).append("\n");
+        t.append("Tested On    : ").append(appHost()).append("\n");
+        t.append("Test Scope   : ").append(b.suite).append("\n\n");
+
+        t.append("RESULTS BY PORTAL\n").append(THIN);
+        for (Map.Entry<String, ClassStats> e : s.byRole.entrySet()) {
+            ClassStats c = e.getValue();
+            if (c.total() == 0) continue; // portal not part of this run
+            String mark = c.failed > 0 || c.setupFailures > 0 ? EMOJI_FAILED
+                    : c.skipped > 0 ? EMOJI_SKIPPED : EMOJI_PASSED;
+            t.append(mark).append(" ").append(e.getKey()).append(" : ").append(c.passed).append(" / ")
+                    .append(c.total()).append(" passed (").append(String.format("%.2f%%", c.passed * 100.0 / c.total()))
+                    .append(")");
+            if (c.failed > 0 || c.skipped > 0) {
+                t.append(" - ").append(c.failed).append(" failed, ").append(c.skipped).append(" skipped");
+            }
+            if (c.setupFailures > 0) {
+                t.append(", ").append(c.setupFailures).append(" setup step(s) failed");
+            }
+            t.append("\n");
+        }
+        t.append("\n");
+
         t.append("BUILD INFORMATION\n").append(THIN);
         t.append("Job Name     : ").append(b.jobName).append("\n");
         t.append("Build Number : #").append(b.number).append("\n");
         t.append("Status       : ").append(status).append("\n");
+        t.append("Started      : ").append(startTime(s)).append("\n");
         t.append("Duration     : ").append(duration(s)).append("\n");
         t.append("Build URL    : ").append(b.buildUrl != null ? b.buildUrl : "N/A (local run)").append("\n\n");
 
@@ -287,6 +349,14 @@ public class EmailReportSender implements IReporter {
         appendRows(t, "SKIPPED TESTS", s.skipped);
         t.append("\n");
 
+        t.append("HOW TO READ THIS REPORT\n").append(THIN);
+        t.append("Passed  : the feature behaved as expected.\n");
+        t.append("Failed  : the application did not behave as the test expected - needs investigation\n");
+        t.append("          (a product defect, or a test that needs updating after a UI change).\n");
+        t.append("Skipped : the test did not run because an earlier step it depends on failed,\n");
+        t.append("          or the required test data was not available.\n");
+        t.append("Each failure in the detailed report includes the error and a screenshot.\n\n");
+
         t.append(LINE).append("             VIEW REPORTS\n").append(LINE);
         t.append("Extent Report (Detailed):\n");
         t.append("Attached to this email - extract the ZIP and open ExtentReport.html\n");
@@ -309,7 +379,8 @@ public class EmailReportSender implements IReporter {
         t.append("\n").append(title).append(" (").append(rows.size()).append("):\n").append(THIN);
         int i = 1;
         for (Row r : rows) {
-            t.append(i++).append(". ").append(r.className).append(" -> ").append(r.methodName).append("\n");
+            t.append(i++).append(". [").append(r.role).append("] ").append(r.className).append(" -> ")
+                    .append(r.methodName).append("\n");
             if (!r.detail.isEmpty()) t.append("   Reason: ").append(r.detail).append("\n");
         }
     }
@@ -366,7 +437,38 @@ public class EmailReportSender implements IReporter {
         if (msg == null || msg.trim().isEmpty()) msg = t.getClass().getSimpleName();
         // Selenium appends multi-line build/session info; the first line is the meaningful part
         msg = msg.split("\\R", 2)[0].trim();
+        // TestNG dependency skips name the object instance ("on instance pkg.Class@1a2b3c") - noise in an email
+        msg = msg.replaceAll(" on instance \\S+", "");
         return msg.length() > MAX_ERROR_LENGTH ? msg.substring(0, MAX_ERROR_LENGTH) + "..." : msg;
+    }
+
+    /** One plain-language sentence describing the outcome, e.g. for management readers. */
+    static String verdict(Summary s) {
+        if (s.total() == 0) {
+            return "NO TESTS RAN - check the Jenkins console output.";
+        }
+        if (s.failed.isEmpty() && s.configFailures.isEmpty()) {
+            return s.skipped.isEmpty()
+                    ? "PASSED - all " + s.total() + " tests passed."
+                    : "PASSED - no failures; " + s.skipped.size() + " of " + s.total()
+                            + " tests were skipped (see list below).";
+        }
+        return "FAILED - " + s.failed.size() + " of " + s.total() + " tests failed"
+                + (s.configFailures.isEmpty() ? "" : ", " + s.configFailures.size() + " setup step(s) failed")
+                + (s.skipped.isEmpty() ? "" : ", " + s.skipped.size() + " skipped")
+                + ". Details below.";
+    }
+
+    private static String appHost() {
+        try {
+            return new java.net.URL(ConfigReader.get("url")).getHost();
+        } catch (Exception e) {
+            return String.valueOf(ConfigReader.get("url"));
+        }
+    }
+
+    private static String startTime(Summary s) {
+        return s.start == null ? "N/A" : new java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a z").format(s.start);
     }
 
     /** Same style as Jenkins' durationString, e.g. "1 hr 5 min", "1 min 58 sec". */
