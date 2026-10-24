@@ -2,13 +2,15 @@
 // stops before that (checkout/compile error, timeout, abort), post{} sends a short notification instead.
 def testsCompleted = false
 
-// SUITE parameter value -> TestNG suite file (one folder per user role under src/test/java/tests)
-def SUITE_FILES = [
-    'All Tests'  : 'testng.xml',
-    'Common'     : 'common.xml',
-    'Enterprise' : 'enterprise.xml',
-    'Reseller'   : 'reseller.xml',
-    'Super Admin': 'superadmin.xml'
+// Description of what this build runs, e.g. "Enterprise + Reseller" (shown in build history and emails)
+def testScope = ''
+
+// Tick-box parameter -> TestNG suite file (one folder per user role under src/test/java/tests)
+def TEST_GROUPS = [
+    [param: 'COMMON',      name: 'Common',      file: 'common.xml'],
+    [param: 'ENTERPRISE',  name: 'Enterprise',  file: 'enterprise.xml'],
+    [param: 'RESELLER',    name: 'Reseller',    file: 'reseller.xml'],
+    [param: 'SUPER_ADMIN', name: 'Super Admin', file: 'superadmin.xml']
 ]
 
 pipeline {
@@ -21,14 +23,14 @@ pipeline {
     }
 
     parameters {
-        choice(name: 'SUITE', choices: ['All Tests', 'Common', 'Enterprise', 'Reseller', 'Super Admin', 'Single Test Class'],
-               description: '''Which tests to run:
-All Tests = every portal (testng.xml)
-Common = tests covering all roles, e.g. login (common.xml)
-Enterprise / Reseller / Super Admin = one portal only (enterprise.xml / reseller.xml / superadmin.xml)
-Single Test Class = only the class named in TEST_CLASS below''')
+        // Tick one or more groups - all ticked groups run together in this one build (one report, one email)
+        booleanParam(name: 'ALL_TESTS',   defaultValue: false, description: 'Run ALL test cases (every portal). Overrides the boxes below.')
+        booleanParam(name: 'COMMON',      defaultValue: false, description: 'Common tests - covering all roles, e.g. login (tests/common)')
+        booleanParam(name: 'ENTERPRISE',  defaultValue: false, description: 'Enterprise portal tests (tests/enterprise)')
+        booleanParam(name: 'RESELLER',    defaultValue: false, description: 'Reseller portal tests (tests/reseller)')
+        booleanParam(name: 'SUPER_ADMIN', defaultValue: false, description: 'Super Admin portal tests (tests/superadmin)')
         string(name: 'TEST_CLASS', defaultValue: '',
-               description: 'Only used when SUITE = "Single Test Class". Class name, e.g. LoginTest or ResellerDashboardAnalyticsTest. Several: LoginTest,SuperAdminDashboardTest. One method: LoginTest#testSuperAdminLogin')
+               description: 'Optional - run only specific class(es) instead of the boxes above. e.g. LoginTest  |  LoginTest,SuperAdminDashboardTest  |  LoginTest#testSuperAdminLogin. Leave empty to use the boxes. If nothing is ticked and this is empty, ALL tests run.')
         booleanParam(name: 'HEADLESS', defaultValue: true, description: 'Run browser in headless mode')
         booleanParam(name: 'SEND_EMAIL', defaultValue: true, description: 'Send the execution summary email with the Extent report attached')
         string(name: 'EMAIL_RECIPIENTS', defaultValue: 'sonu.bhagat@altiquence.com,aryan.sonu7562@gmail.com', description: 'Comma-separated list of report recipients')
@@ -75,20 +77,57 @@ Single Test Class = only the class named in TEST_CLASS below''')
                         def commonArgs = "-B -Dbrowser.headless=${params.HEADLESS} -Dmaven.test.failure.ignore=true " +
                                 "\"-Demail.enable=${params.SEND_EMAIL}\" \"-Demail.recipients=${recipients}\""
 
-                        if (params.SUITE == 'Single Test Class') {
-                            def testClass = (params.TEST_CLASS ?: '').trim()
+                        def testClass = (params.TEST_CLASS ?: '').trim()
+                        def mvnTarget
+
+                        if (testClass) {
                             // Only class/method names - the value is passed to cmd.exe
                             if (!(testClass ==~ /[A-Za-z0-9_.#,*+]+/)) {
-                                error "SUITE is 'Single Test Class' but TEST_CLASS is empty or invalid: '${testClass}'. Example: LoginTest"
+                                error "TEST_CLASS is invalid: '${testClass}'. Example: LoginTest or LoginTest,SuperAdminDashboardTest"
                             }
-                            currentBuild.description = "Class: ${testClass}"
-                            echo "Executing test class: ${testClass} (Headless: ${params.HEADLESS})..."
-                            bat "mvn test -Dtest=${testClass} ${commonArgs}"
+                            testScope = "Test class(es): ${testClass}"
+                            mvnTarget = "-Dtest=${testClass}"
                         } else {
-                            def suiteFile = SUITE_FILES[params.SUITE]
-                            currentBuild.description = "${params.SUITE} (${suiteFile})"
-                            echo "Executing ${params.SUITE} suite: ${suiteFile} (Headless: ${params.HEADLESS})..."
-                            bat "mvn test -DsuiteXmlFile=${suiteFile} ${commonArgs}"
+                            def selected = []
+                            for (group in TEST_GROUPS) {
+                                if (params[group.param]) {
+                                    selected << group
+                                }
+                            }
+
+                            if (params.ALL_TESTS || selected.isEmpty()) {
+                                testScope = 'All Tests'
+                                mvnTarget = '-DsuiteXmlFile=testng.xml'
+                            } else if (selected.size() == 1) {
+                                testScope = selected[0].name
+                                mvnTarget = "-DsuiteXmlFile=${selected[0].file}"
+                            } else {
+                                // Several groups: one parent suite that runs each group's suite file in turn,
+                                // so the build produces a single report and a single email
+                                def names = []
+                                def suiteFiles = ''
+                                for (group in selected) {
+                                    names << group.name
+                                    suiteFiles += "        <suite-file path=\"${group.file}\"/>\n"
+                                }
+                                testScope = names.join(' + ')
+                                writeFile file: 'selected-suites.xml', text: """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!-- Generated by the Jenkins build for: ${testScope} -->
+<suite name="Selected: ${testScope}">
+    <suite-files>
+${suiteFiles}    </suite-files>
+</suite>
+"""
+                                mvnTarget = '-DsuiteXmlFile=selected-suites.xml'
+                            }
+                        }
+
+                        currentBuild.description = testScope
+                        echo "Running: ${testScope} (Headless: ${params.HEADLESS})"
+                        // TEST_SCOPE is read by the report email ("Test Scope" line)
+                        withEnv(["TEST_SCOPE=${testScope}"]) {
+                            bat "mvn test ${mvnTarget} ${commonArgs}"
                         }
                         testsCompleted = true
                     }
@@ -122,7 +161,7 @@ timeout or a manual abort) - it is not a test result.
 Job Name     : ${env.JOB_NAME}
 Build Number : #${env.BUILD_NUMBER}
 Build Status : ${currentBuild.currentResult}
-Test Scope   : ${params.SUITE == 'Single Test Class' ? 'Single test class: ' + params.TEST_CLASS : params.SUITE}
+Test Scope   : ${testScope ?: 'not determined - the build stopped before the test stage'}
 Duration     : ${currentBuild.durationString.replace(' and counting', '')}
 
 Console Output (cause of the error):

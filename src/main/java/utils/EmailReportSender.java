@@ -259,12 +259,11 @@ public class EmailReportSender implements IReporter {
             b.number = Optional.ofNullable(env("BUILD_NUMBER")).orElse("local");
             String url = env("BUILD_URL");
             b.buildUrl = url == null ? null : (url.endsWith("/") ? url : url + "/");
-            // Jenkins exposes the SUITE / TEST_CLASS build parameters as environment variables
-            String testClass = env("TEST_CLASS");
-            b.suite = "Single Test Class".equals(env("SUITE")) && testClass != null
-                    ? "Single test class (" + testClass + ")"
-                    : describeSuite(Optional.ofNullable(env("SUITE"))
-                            .orElse(System.getProperty("suiteXmlFile", System.getProperty("test", "testng.xml"))));
+            // The Jenkinsfile sets TEST_SCOPE to what this build runs, e.g. "Enterprise + Reseller"
+            String scope = env("TEST_SCOPE");
+            b.suite = scope != null
+                    ? ("All Tests".equals(scope) ? "Full regression - all portals (testng.xml)" : scope)
+                    : describeSuite(System.getProperty("suiteXmlFile", System.getProperty("test", "testng.xml")));
             return b;
         }
 

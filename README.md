@@ -121,8 +121,11 @@ The pipeline ([Jenkinsfile](Jenkinsfile)) checks out `main`, compiles and runs t
 
 | Parameter | Default | Purpose |
 |---|---|---|
-| `SUITE` | `All Tests` | `All Tests`, `Common`, `Enterprise`, `Reseller`, `Super Admin`, or `Single Test Class` |
-| `TEST_CLASS` | empty | Only for `Single Test Class`: e.g. `LoginTest`, `LoginTest,SuperAdminDashboardTest`, or `LoginTest#testSuperAdminLogin` |
+| `ALL_TESTS` | off | Tick to run every test case (overrides the group boxes) |
+| `COMMON` / `ENTERPRISE` / `RESELLER` / `SUPER_ADMIN` | off | Tick one or more groups - all ticked groups run together in one build, with one report and one email |
+| `TEST_CLASS` | empty | Optional: run only specific class(es) instead, e.g. `LoginTest`, `LoginTest,SuperAdminDashboardTest`, or `LoginTest#testSuperAdminLogin` |
+
+If nothing is ticked and `TEST_CLASS` is empty, all tests run.
 | `HEADLESS` | `true` | Headless Chrome |
 | `SEND_EMAIL` | `true` | Send the summary email |
 | `EMAIL_RECIPIENTS` | team list | Comma-separated recipients |
