@@ -91,8 +91,9 @@ public class ResellerDashboardAnalyticsTest extends BaseTest {
         // service tab bar narrows down accordingly (confirmed live: selecting
         // a customer filters tabs to only that customer's provisioned
         // services, e.g. 'acpltest783' -> only the OBD tab remains).
+        // The dropdown capitalises names ("Acpltest783"), so match ignoring case
         String customerWithService = "acpltest783";
-        Assert.assertTrue(options.contains(customerWithService),
+        Assert.assertTrue(options.stream().anyMatch(o -> o.equalsIgnoreCase(customerWithService)),
                 "Expected test customer '" + customerWithService + "' not found in options: " + options);
 
         boolean selected = analyticsPage.selectOpenCustomerOptionByText(customerWithService);

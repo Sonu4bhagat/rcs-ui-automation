@@ -97,7 +97,7 @@ public class ResellerDashboardAnalyticsPage {
         try {
             List<WebElement> options = driver.findElements(By.xpath("//div[contains(@class,'ng-option')]"));
             for (WebElement o : options) {
-                if (o.getText().trim().equals(optionText)) {
+                if (o.getText().trim().equalsIgnoreCase(optionText)) { // option names are capitalised in the UI
                     try {
                         o.click();
                     } catch (Exception e) {

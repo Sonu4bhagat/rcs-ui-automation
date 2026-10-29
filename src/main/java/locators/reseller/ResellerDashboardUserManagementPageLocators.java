@@ -110,7 +110,9 @@ public class ResellerDashboardUserManagementPageLocators {
             "//*[contains(text(),'Organization Level')]/following-sibling::*[1] | //*[contains(text(),'Organization Level')]/parent::*/following-sibling::*[1]");
 
     // ========== Profile tab ==========
-    public static final By TEAM_MEMBERS_HEADER = By.xpath("//*[normalize-space()='Team Members']");
+    // The Profile tab heading was renamed from "Team Members" to "Profile List"
+    public static final By TEAM_MEMBERS_HEADER = By.xpath(
+            "//*[normalize-space()='Team Members' or normalize-space()='Profile List']");
     public static final By PROFILE_ADD_NEW_BUTTON = By.xpath(
             "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add new')]");
 

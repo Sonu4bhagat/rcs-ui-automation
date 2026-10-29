@@ -502,12 +502,13 @@ public class ResellerDashboardUserManagementTest extends BaseTest {
     public void testProfileHeader() {
         System.out.println("=== TC19: Verify Profile Header ===");
 
-        Assert.assertTrue(page.isTeamMembersHeaderVisible(), "'Team Members' header should be visible");
+        Assert.assertTrue(page.isTeamMembersHeaderVisible(), "'Profile List' header should be visible");
 
         List<String> headers = page.getTableHeaders();
         System.out.println("Profile table headers: " + headers);
         Assert.assertFalse(headers.isEmpty(), "Profile table headers should be present");
-        String[] expected = { "Name", "Roles Name", "Status" };
+        // The UI renamed the "Roles Name" column to "Role"
+        String[] expected = { "Name", "Role", "Status" };
         for (String exp : expected) {
             boolean found = headers.stream().anyMatch(h -> h.contains(exp));
             Assert.assertTrue(found, "Expected header containing '" + exp + "' not found in: " + headers);
