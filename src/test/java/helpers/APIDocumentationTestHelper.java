@@ -30,8 +30,7 @@ public class APIDocumentationTestHelper {
 
         // Step 1: Click View Details
         System.out.println("Step 1: Clicking View Details for " + serviceName + "...");
-        apiDocPage.clickViewDetails(serviceName);
-        Thread.sleep(1500);
+        apiDocPage.clickViewDetails(serviceName); // waits for the loading spinner itself
         System.out.println("✓ View Details clicked for " + serviceName);
 
         // Step 2: Verify API Documentation Download button is clickable
@@ -59,14 +58,12 @@ public class APIDocumentationTestHelper {
 
         // Step 5: Click Explore Swagger UI
         System.out.println("\nStep 5: Clicking Explore Swagger UI for " + serviceName + "...");
-        apiDocPage.clickExploreSwaggerUI(serviceName);
-        Thread.sleep(2000);
+        apiDocPage.clickExploreSwaggerUI(serviceName); // waits until the new tab exists
         System.out.println("✓ Explore Swagger UI clicked for " + serviceName);
 
         // Step 6: Switch to new tab
         System.out.println("\nStep 6: Switching to Swagger UI tab...");
-        apiDocPage.switchToNewTab();
-        Thread.sleep(2000);
+        apiDocPage.switchToNewTab(); // pauses for the tab to load
         System.out.println("✓ Switched to Swagger UI tab");
 
         // Step 7: Verify Swagger UI domain
@@ -93,8 +90,7 @@ public class APIDocumentationTestHelper {
 
         // Step 8: Close Swagger tab and return to main window
         System.out.println("\nStep 8: Closing Swagger UI tab and returning to main window...");
-        apiDocPage.closeCurrentTabAndSwitch();
-        Thread.sleep(1000);
+        apiDocPage.closeCurrentTabAndSwitch(); // waits for the loading spinner itself
         System.out.println("✓ Returned to main window");
 
         // Step 9: Close any open modals
@@ -109,8 +105,6 @@ public class APIDocumentationTestHelper {
         apiDocPage.navigateBackToServiceList();
         Thread.sleep(1000);
         System.out.println("✓ Returned to service list");
-        // Extra wait to ensure page is ready for next test
-        Thread.sleep(1500);
     }
 
     /**

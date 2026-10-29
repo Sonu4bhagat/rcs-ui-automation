@@ -185,11 +185,31 @@ public class DashboardPage {
                 System.out.println("  ✗ SPARC logo not found - Dashboard did not load");
                 System.out.println("  Debug - Current URL: " + currentUrl);
                 System.out.println("  Debug - Page Title: " + driver.getTitle());
+                attachServicePageEvidence();
                 return false;
             }
         } catch (Exception e) {
             System.out.println("  ✗ Dashboard verification error: " + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Records what the service page shows when its dashboard check fails. The SSO test closes this tab
+     * before the usual failure screenshot is taken, so that screenshot only shows the SSO list page.
+     */
+    private void attachServicePageEvidence() {
+        try {
+            String bodyText = driver.findElement(By.tagName("body")).getText().trim();
+            System.out.println("  Debug - Page text: "
+                    + (bodyText.isEmpty() ? "(empty)" : bodyText.substring(0, Math.min(300, bodyText.length()))));
+        } catch (Exception e) {
+            System.out.println("  Debug - Page text unavailable: " + e.getMessage());
+        }
+        String screenshot = utils.ScreenshotUtil.captureScreenshotAsBase64(driver);
+        if (screenshot != null && utils.ExtentReportManager.getTest() != null) {
+            utils.ExtentReportManager.getTest().addScreenCaptureFromBase64String(screenshot,
+                    "Service page when the dashboard check failed");
         }
     }
 

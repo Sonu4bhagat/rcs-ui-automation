@@ -126,9 +126,9 @@ public class TeamManagementPage {
      */
     public int getTableRowCount() {
         try {
+            // TABLE_ROWS only matches body rows with cells, so there is no header row to subtract
             List<WebElement> rows = driver.findElements(TeamManagementPageLocators.TABLE_ROWS);
-            // Subtract 1 for header row
-            int count = Math.max(0, rows.size() - 1);
+            int count = rows.size();
             System.out.println("Table has " + count + " data row(s)");
             return count;
         } catch (Exception e) {

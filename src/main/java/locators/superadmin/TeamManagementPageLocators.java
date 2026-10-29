@@ -30,7 +30,7 @@ public class TeamManagementPageLocators {
         // ========== Search ==========
         // Search input field
         public static final By SEARCH_FIELD = By.xpath(
-                        "//input[@placeholder='Search by name, role']");
+                        "//input[contains(@placeholder, 'Search by name')]");
 
         // Alternative search field locator
         public static final By SEARCH_FIELD_ALT = By.cssSelector(
@@ -84,9 +84,9 @@ public class TeamManagementPageLocators {
         public static final By TABLE_CONTAINER = By.xpath(
                         "//div[contains(@class, 'table-wrapper')]");
 
-        // All table headers (using th//span)
+        // All table headers (th text - the header row no longer has the 'table-head' class / inner span)
         public static final By TABLE_HEADERS = By.xpath(
-                        "//thead[@class='table-head']//th//span");
+                        "//table//thead//th");
 
         // Alternative: All th elements
         public static final By TABLE_HEADERS_TH = By.xpath(
@@ -111,21 +111,21 @@ public class TeamManagementPageLocators {
 
         // Table rows (in tbody)
         public static final By TABLE_ROWS = By.xpath(
-                        "//tbody[@class='table-body']//tr[contains(@class, 'table-row')]");
+                        "//table//tbody//tr[td]");
 
         // Table cells (td elements)
         public static final By TABLE_CELLS = By.xpath(
                         "//tbody[@class='table-body']//tr//td[contains(@class, 'table-data')]");
 
-        // Role Name column values (second column - index 2)
+        // Role column values (second column - index 2; shows role badges, e.g. "Super Admin +1")
         public static final By TABLE_ROLE_COLUMN_VALUES = By.xpath(
-                        "//tbody[@class='table-body']//tr[contains(@class, 'table-row')]//td[2]//div");
+                        "//table//tbody//tr//td[2]");
 
         // Get role value for specific row
         public static By getRoleValueByRow(int rowIndex) {
                 return By.xpath(
-                                "(//tbody[@class='table-body']//tr[contains(@class, 'table-row')])[" + rowIndex
-                                                + "]//td[2]//div");
+                                "(//table//tbody//tr[td])[" + rowIndex
+                                                + "]//td[2]");
         }
 
         // ========== Action Buttons ==========

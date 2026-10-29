@@ -465,20 +465,8 @@ public class APIAndDocumentationPage {
         try {
             System.out.println("Navigating back to API documentation service list...");
 
-            // Strategy 1: Try to find and click a Back button
-            try {
-                WebElement backBtn = new WebDriverWait(driver, Duration.ofSeconds(3))
-                        .until(ExpectedConditions
-                                .elementToBeClickable(APIAndDocumentationPageLocators.BACK_TO_LIST_BUTTON));
-                backBtn.click();
-                waitForLoadingToComplete();
-                System.out.println("Clicked Back button to return to service list");
-                return;
-            } catch (Exception e) {
-                // Back button not found, try next strategy
-            }
-
-            // Strategy 2: Check if we're on a detail page (URL contains service name)
+            // Strategy 1: On a detail page (URL contains the service name) use browser back. Checked first:
+            // the detail pages have no Back button, so waiting for one cost several seconds per service.
             String currentUrl = driver.getCurrentUrl();
             if (currentUrl.contains("/api-documentation/") &&
                     (currentUrl.contains("/sms") || currentUrl.contains("/obd") ||
@@ -493,6 +481,19 @@ public class APIAndDocumentationPage {
                 wait.until(ExpectedConditions.presenceOfElementLocated(
                         APIAndDocumentationPageLocators.SERVICE_CARDS_CONTAINER));
                 return;
+            }
+
+            // Strategy 2: Try to find and click a Back button
+            try {
+                WebElement backBtn = new WebDriverWait(driver, Duration.ofSeconds(3))
+                        .until(ExpectedConditions
+                                .elementToBeClickable(APIAndDocumentationPageLocators.BACK_TO_LIST_BUTTON));
+                backBtn.click();
+                waitForLoadingToComplete();
+                System.out.println("Clicked Back button to return to service list");
+                return;
+            } catch (Exception e) {
+                // Back button not found, try next strategy
             }
 
             // Strategy 3: Re-click the API & Documentation menu to reload the main page

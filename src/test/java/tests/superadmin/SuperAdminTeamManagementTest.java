@@ -67,7 +67,8 @@ public class SuperAdminTeamManagementTest extends BaseTest {
             System.out.println("TEST: Table Headers Validation");
             System.out.println("========================================");
 
-            List<String> expectedHeaders = Arrays.asList("Name", "Roles Name", "Created On", "Status");
+            // The UI renamed the "Roles Name" column to "Role"
+            List<String> expectedHeaders = Arrays.asList("Name", "Role", "Created On", "Status");
 
             List<String> actualHeaders = teamPage.getTableHeaders();
             System.out.println("Expected headers: " + expectedHeaders);

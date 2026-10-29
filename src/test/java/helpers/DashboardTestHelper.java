@@ -73,10 +73,6 @@ public class DashboardTestHelper {
                 // Retry is handled inside clickService usually, but if it throws, we catch here
             }
 
-            // Use significantly longer wait in headless mode or if click was flaky
-            int waitTime = DriverFactory.isHeadlessModeEnabled() ? 8000 : 3000;
-            System.out.println("Waiting " + waitTime + "ms for page load...");
-            Thread.sleep(waitTime);
             if (serviceName.equalsIgnoreCase("Live Agent")) {
                 System.out.println("Waiting for Live Agent URL verification...");
                 WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
@@ -105,6 +101,12 @@ public class DashboardTestHelper {
                 Thread.sleep(2000);
                 isLoaded = dashboardPage.isServicePageLoaded(serviceCheckName);
             }
+
+            // isServicePageLoaded already waits for the service URL, so a fixed 8s pause before it only
+            // cost time. Pause briefly after it instead, so error popups from the page's API calls can show.
+            int settleTime = DriverFactory.isHeadlessModeEnabled() ? 3000 : 1500;
+            System.out.println("Waiting " + settleTime + "ms for the page's data to load...");
+            Thread.sleep(settleTime);
 
             // Step 2b: Explicitly check for UI error messages
             String errorMessage = dashboardPage.checkForPageErrors();
