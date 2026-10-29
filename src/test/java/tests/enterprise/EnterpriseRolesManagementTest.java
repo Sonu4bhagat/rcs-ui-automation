@@ -372,7 +372,9 @@ public class EnterpriseRolesManagementTest extends BaseTest {
 
     // ==================== Test Case 14: Logout ====================
 
-    @Test(priority = 14, description = "Logout from Enterprise account", dependsOnMethods = "testLoginAndControlCenterNavigation", alwaysRun = true)
+    // Depends on the last test in the chain: TestNG orders by dependency level (not priority), so depending
+    // only on the login test made logout run 3rd and the remaining tests ran on the login page.
+    @Test(priority = 14, description = "Logout from Enterprise account", dependsOnMethods = "testUsersCountNavigation", alwaysRun = true)
     public void testLogout() throws InterruptedException {
         System.out.println("=== Test Case 14: Logout ===");
 

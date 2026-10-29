@@ -14,6 +14,14 @@ public class DriverFactory {
 
     private static final ThreadLocal<WebDriver> driver = new ThreadLocal<>();
 
+    // chromedriver only needs resolving once per run, not for every test class
+    private static volatile boolean driverBinaryResolved = false;
+
+    // Selenium's default page load timeout is 300s. A tab that never finishes loading (e.g. Swagger UI or an
+    // external SSO site) then blocks every command for minutes and has stalled single tests for hours in CI.
+    private static final int PAGE_LOAD_TIMEOUT_SECONDS = 60;
+    private static final int SCRIPT_TIMEOUT_SECONDS = 30;
+
     /**
      * Initializes the WebDriver with configurable headless mode.
      * 
@@ -26,7 +34,10 @@ public class DriverFactory {
         // Suppress Selenium CDP Warnings
         Logger.getLogger("org.openqa.selenium").setLevel(Level.SEVERE);
 
-        WebDriverManager.chromedriver().setup();
+        if (!driverBinaryResolved) {
+            WebDriverManager.chromedriver().setup();
+            driverBinaryResolved = true;
+        }
 
         ChromeOptions options = new ChromeOptions();
 
@@ -81,7 +92,10 @@ public class DriverFactory {
         // execution
         int implicitWait = 2;
         driver.get().manage().timeouts().implicitlyWait(java.time.Duration.ofSeconds(implicitWait));
-        System.out.println("[DriverFactory] Driver initialized with " + implicitWait + "s implicit wait.");
+        driver.get().manage().timeouts().pageLoadTimeout(java.time.Duration.ofSeconds(PAGE_LOAD_TIMEOUT_SECONDS));
+        driver.get().manage().timeouts().scriptTimeout(java.time.Duration.ofSeconds(SCRIPT_TIMEOUT_SECONDS));
+        System.out.println("[DriverFactory] Driver initialized with " + implicitWait + "s implicit wait, "
+                + PAGE_LOAD_TIMEOUT_SECONDS + "s page load timeout.");
     }
 
     // Store headless mode state for access by other classes

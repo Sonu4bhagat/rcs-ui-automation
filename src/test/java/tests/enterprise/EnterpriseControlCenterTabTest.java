@@ -289,7 +289,9 @@ public class EnterpriseControlCenterTabTest extends BaseTest {
 
     // ==================== Test Case 11: Logout ====================
 
-    @Test(priority = 11, description = "Logout from Enterprise account", dependsOnMethods = "testLoginAndControlCenterNavigation", alwaysRun = true)
+    // Depends on the last test in the chain: TestNG orders by dependency level (not priority), so depending
+    // only on the login test made logout run 3rd and the remaining tests ran on the login page.
+    @Test(priority = 11, description = "Logout from Enterprise account", dependsOnMethods = "testPaginationPrevious", alwaysRun = true)
     public void testLogout() {
         System.out.println("=== Test Case 11: Logout ===");
 

@@ -19,6 +19,7 @@ public class APIAndDocumentationPage {
 
     private WebDriver driver;
     private WebDriverWait wait;
+    private String mainWindowHandle; // window that opened the Swagger tab
 
     public APIAndDocumentationPage(WebDriver driver) {
         this.driver = driver;
@@ -165,24 +166,38 @@ public class APIAndDocumentationPage {
      */
     public boolean isAPIDownloadButtonClickable(String serviceName) {
         try {
-            WebElement downloadBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                    APIAndDocumentationPageLocators.getDownloadButton(serviceName)));
+            // Service-specific button, or the generic one if the service-specific locator doesn't match
+            WebElement downloadBtn = waitForClickable(
+                    APIAndDocumentationPageLocators.getDownloadButton(serviceName),
+                    APIAndDocumentationPageLocators.API_DOC_DOWNLOAD_BUTTON);
             boolean clickable = downloadBtn.isEnabled() && downloadBtn.isDisplayed();
             System.out.println("API Download button clickable for " + serviceName + ": " + clickable);
             return clickable;
         } catch (Exception e) {
-            // Try generic download button if service-specific not found
-            try {
-                WebElement genericBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                        APIAndDocumentationPageLocators.API_DOC_DOWNLOAD_BUTTON));
-                boolean clickable = genericBtn.isEnabled() && genericBtn.isDisplayed();
-                System.out.println("Generic API Download button clickable: " + clickable);
-                return clickable;
-            } catch (Exception ex) {
-                System.out.println("API Download button not clickable for " + serviceName + ": " + ex.getMessage());
-                return false;
-            }
+            System.out.println("API Download button not clickable for " + serviceName + ": " + e.getMessage());
+            return false;
         }
+    }
+
+    /**
+     * Waits for the preferred button, falling back to the generic one, in a single wait. Waiting for them
+     * one after the other spent the full timeout (20s headless) on every lookup where the preferred
+     * locator doesn't match.
+     */
+    private WebElement waitForClickable(By preferred, By fallback) {
+        return wait.until(d -> {
+            for (By locator : new By[] { preferred, fallback }) {
+                try {
+                    WebElement element = ExpectedConditions.elementToBeClickable(locator).apply(d);
+                    if (element != null) {
+                        return element;
+                    }
+                } catch (NoSuchElementException | StaleElementReferenceException e) {
+                    // Not there (yet) - try the other locator
+                }
+            }
+            return null;
+        });
     }
 
     /**
@@ -193,15 +208,9 @@ public class APIAndDocumentationPage {
     public void downloadAPIDocumentation(String serviceName) throws InterruptedException {
         try {
             System.out.println("Downloading API documentation for " + serviceName + "...");
-            WebElement downloadBtn;
-            try {
-                downloadBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                        APIAndDocumentationPageLocators.getDownloadButton(serviceName)));
-            } catch (Exception e) {
-                // Fallback to generic download button
-                downloadBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                        APIAndDocumentationPageLocators.API_DOC_DOWNLOAD_BUTTON));
-            }
+            WebElement downloadBtn = waitForClickable(
+                    APIAndDocumentationPageLocators.getDownloadButton(serviceName),
+                    APIAndDocumentationPageLocators.API_DOC_DOWNLOAD_BUTTON);
             downloadBtn.click();
             Thread.sleep(3000); // Allow download to complete
             System.out.println("Successfully triggered download for " + serviceName);
@@ -261,15 +270,9 @@ public class APIAndDocumentationPage {
     public void clickExploreSwaggerUI(String serviceName) throws InterruptedException {
         try {
             System.out.println("Clicking Explore Swagger UI for " + serviceName + "...");
-            WebElement swaggerBtn;
-            try {
-                swaggerBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                        APIAndDocumentationPageLocators.getSwaggerButton(serviceName)));
-            } catch (Exception e) {
-                // Fallback to generic swagger button
-                swaggerBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                        APIAndDocumentationPageLocators.EXPLORE_SWAGGER_BUTTON));
-            }
+            WebElement swaggerBtn = waitForClickable(
+                    APIAndDocumentationPageLocators.getSwaggerButton(serviceName),
+                    APIAndDocumentationPageLocators.EXPLORE_SWAGGER_BUTTON);
             swaggerBtn.click();
             wait.until(driver -> driver.getWindowHandles().size() > 1);
             System.out.println("Successfully clicked Explore Swagger UI for " + serviceName);
@@ -285,16 +288,18 @@ public class APIAndDocumentationPage {
     public void switchToNewTab() throws InterruptedException {
         try {
             System.out.println("Switching to new tab...");
-            Set<String> windows = driver.getWindowHandles();
-            ArrayList<String> tabs = new ArrayList<>(windows);
-
-            if (tabs.size() > 1) {
-                driver.switchTo().window(tabs.get(1));
-                Thread.sleep(1500); // Allow tab to load
-                System.out.println("Switched to new tab. Current URL: " + driver.getCurrentUrl());
-            } else {
-                System.out.println("No new tab found");
+            // Window handles are not guaranteed to be in opening order - pick the one that isn't the main window
+            String current = driver.getWindowHandle();
+            for (String handle : driver.getWindowHandles()) {
+                if (!handle.equals(current)) {
+                    mainWindowHandle = current;
+                    driver.switchTo().window(handle);
+                    Thread.sleep(1500); // Allow tab to load
+                    System.out.println("Switched to new tab. Current URL: " + driver.getCurrentUrl());
+                    return;
+                }
             }
+            System.out.println("No new tab found");
         } catch (Exception e) {
             System.out.println("Error switching to new tab: " + e.getMessage());
             throw e;
@@ -342,17 +347,20 @@ public class APIAndDocumentationPage {
     public void closeCurrentTabAndSwitch() throws InterruptedException {
         try {
             System.out.println("Closing current tab and switching back...");
-            driver.close();
-            Thread.sleep(500);
+            // Only close the Swagger tab - closing the main (last) window ends the whole browser session
+            if (mainWindowHandle != null && !driver.getWindowHandle().equals(mainWindowHandle)) {
+                driver.close();
+                Thread.sleep(500);
+            }
 
             Set<String> windows = driver.getWindowHandles();
-            ArrayList<String> tabs = new ArrayList<>(windows);
-
-            if (!tabs.isEmpty()) {
-                driver.switchTo().window(tabs.get(0));
-                waitForLoadingToComplete();
-                System.out.println("Switched back to main window");
+            if (mainWindowHandle != null && windows.contains(mainWindowHandle)) {
+                driver.switchTo().window(mainWindowHandle);
+            } else if (!windows.isEmpty()) {
+                driver.switchTo().window(windows.iterator().next());
             }
+            waitForLoadingToComplete();
+            System.out.println("Switched back to main window");
         } catch (Exception e) {
             System.out.println("Error closing tab: " + e.getMessage());
             throw e;
@@ -397,28 +405,41 @@ public class APIAndDocumentationPage {
                     By.cssSelector("button.close, button[data-dismiss='modal']")
             };
 
+            // Check each locator once without waiting. Usually no modal is open, and waiting up to 2s per
+            // locator (plus the implicit wait inside every lookup) added 15-30s to each View Details click.
             boolean modalClosed = false;
-            for (By locator : closeButtonLocators) {
-                try {
-                    WebElement closeBtn = new WebDriverWait(driver, Duration.ofSeconds(2))
-                            .until(ExpectedConditions.elementToBeClickable(locator));
+            Duration implicitWait = driver.manage().timeouts().getImplicitWaitTimeout();
+            driver.manage().timeouts().implicitlyWait(Duration.ZERO);
+            try {
+                for (By locator : closeButtonLocators) {
+                    for (WebElement closeBtn : driver.findElements(locator)) {
+                        try {
+                            if (!closeBtn.isDisplayed() || !closeBtn.isEnabled()) {
+                                continue;
+                            }
 
-                    // Try regular click first
-                    try {
-                        closeBtn.click();
-                    } catch (Exception clickEx) {
-                        // If regular click fails, try JavaScript click
-                        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", closeBtn);
+                            // Try regular click first
+                            try {
+                                closeBtn.click();
+                            } catch (Exception clickEx) {
+                                // If regular click fails, try JavaScript click
+                                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", closeBtn);
+                            }
+
+                            Thread.sleep(500);
+                            modalClosed = true;
+                            System.out.println("Modal closed successfully");
+                            break;
+                        } catch (StaleElementReferenceException e) {
+                            // Element went away - try the next one
+                        }
                     }
-
-                    Thread.sleep(500);
-                    modalClosed = true;
-                    System.out.println("Modal closed successfully");
-                    break;
-                } catch (Exception e) {
-                    // Try next locator
-                    continue;
+                    if (modalClosed) {
+                        break;
+                    }
                 }
+            } finally {
+                driver.manage().timeouts().implicitlyWait(implicitWait);
             }
 
             if (!modalClosed) {

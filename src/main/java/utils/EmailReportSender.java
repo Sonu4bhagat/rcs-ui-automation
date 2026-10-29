@@ -13,15 +13,9 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Stream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 /**
  * Sends the execution summary email once all suites have finished.
@@ -35,7 +29,6 @@ public class EmailReportSender implements IReporter {
 
     private static final AtomicBoolean SENT = new AtomicBoolean(false);
     private static final String EXTENT_REPORT = "test-output/ExtentReport.html";
-    private static final String EXTENT_ASSETS = "test-output/spark";
     private static final long MAX_ATTACHMENT_BYTES = 20L * 1024 * 1024; // Gmail limit is 25 MB
     private static final int MAX_ERROR_LENGTH = 250;
 
@@ -222,21 +215,22 @@ public class EmailReportSender implements IReporter {
                     + " | Passed " + summary.passed + "/" + summary.total() + " (" + passRate(summary) + ")", "UTF-8");
             message.setSentDate(new Date());
 
-            MimeMultipart multipart = new MimeMultipart("mixed");
-            MimeBodyPart bodyPart = new MimeBodyPart();
-            bodyPart.setText(buildBody(summary, build, status, statusEmoji), "UTF-8");
-            multipart.addBodyPart(bodyPart);
-
-            File reportZip = zipExtentReport();
-            if (reportZip != null) {
-                MimeBodyPart attachment = new MimeBodyPart();
-                attachment.attachFile(reportZip);
-                attachment.setFileName("RCS_Automation_ExtentReport_Build_" + build.number + ".zip");
-                multipart.addBodyPart(attachment);
+            String body = buildBody(summary, build, status, statusEmoji);
+            File report = reportAttachment();
+            try {
+                message.setContent(content(body, report, build));
+                Transport.send(message);
+            } catch (MessagingException e) {
+                if (report == null) {
+                    throw e;
+                }
+                // e.g. Gmail "552 5.7.0 message blocked" - still deliver the summary, without the attachment
+                System.err.println("[WARN] Email with report attached was rejected (" + e.getMessage().split("\\R", 2)[0]
+                        + "). Re-sending the summary without the attachment.");
+                message.setContent(content(body + "\nNOTE: The detailed report could not be attached to this email."
+                        + " Open it from the Jenkins build artifacts (link above).\n", null, build));
+                Transport.send(message);
             }
-
-            message.setContent(multipart);
-            Transport.send(message);
             System.out.println("[SUCCESS] Test execution summary email sent to: " + recipients);
 
         } catch (Exception e) {
@@ -362,7 +356,7 @@ public class EmailReportSender implements IReporter {
 
         t.append(LINE).append("             VIEW REPORTS\n").append(LINE);
         t.append("Extent Report (Detailed):\n");
-        t.append("Attached to this email - extract the ZIP and open ExtentReport.html\n");
+        t.append("Attached to this email - open the .html file in a browser (needs internet for styling)\n");
         if (b.buildUrl != null) {
             String artifacts = b.buildUrl + "artifact/";
             t.append(artifacts).append("test-output/ExtentReport.html\n\n");
@@ -390,41 +384,36 @@ public class EmailReportSender implements IReporter {
 
     // ------------------------------------------------------------------ attachment
 
-    /** Zips ExtentReport.html with its spark/ assets so the report renders correctly when opened from the mail. */
-    private static File zipExtentReport() {
+    /**
+     * The Extent report as a single self-contained HTML file (styles/scripts load from a CDN), or null.
+     * It is not zipped: Gmail blocks archives containing .js files ("552 5.7.0 ... security issue").
+     */
+    private static File reportAttachment() {
         File report = new File(EXTENT_REPORT);
         if (!report.exists()) {
             System.out.println("[WARN] Extent report not found at " + EXTENT_REPORT + "; sending email without attachment.");
             return null;
         }
-        File zip = new File("target/RCS_Automation_ExtentReport.zip");
-        zip.getParentFile().mkdirs();
-        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip))) {
-            addToZip(zos, report.toPath(), "ExtentReport.html");
-            Path assets = new File(EXTENT_ASSETS).toPath();
-            if (Files.isDirectory(assets)) {
-                try (Stream<Path> files = Files.walk(assets)) {
-                    for (Path p : (Iterable<Path>) files.filter(Files::isRegularFile)::iterator) {
-                        addToZip(zos, p, "spark/" + assets.relativize(p).toString().replace('\\', '/'));
-                    }
-                }
-            }
-        } catch (IOException e) {
-            System.err.println("[WARN] Could not zip Extent report: " + e.getMessage());
-            return null;
-        }
-        if (zip.length() > MAX_ATTACHMENT_BYTES) {
-            System.out.println("[WARN] Extent report ZIP is " + (zip.length() / (1024 * 1024))
+        if (report.length() > MAX_ATTACHMENT_BYTES) {
+            System.out.println("[WARN] Extent report is " + (report.length() / (1024 * 1024))
                     + " MB (over the mail limit); sending without attachment. Use the Jenkins artifact link instead.");
             return null;
         }
-        return zip;
+        return report;
     }
 
-    private static void addToZip(ZipOutputStream zos, Path file, String entryName) throws IOException {
-        zos.putNextEntry(new ZipEntry(entryName));
-        Files.copy(file, zos);
-        zos.closeEntry();
+    private static MimeMultipart content(String body, File report, BuildInfo build) throws MessagingException, IOException {
+        MimeMultipart multipart = new MimeMultipart("mixed");
+        MimeBodyPart bodyPart = new MimeBodyPart();
+        bodyPart.setText(body, "UTF-8");
+        multipart.addBodyPart(bodyPart);
+        if (report != null) {
+            MimeBodyPart attachment = new MimeBodyPart();
+            attachment.attachFile(report);
+            attachment.setFileName("RCS_Automation_Report_Build_" + build.number + ".html");
+            multipart.addBodyPart(attachment);
+        }
+        return multipart;
     }
 
     // ------------------------------------------------------------------ helpers

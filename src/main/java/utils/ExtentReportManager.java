@@ -38,8 +38,9 @@ public class ExtentReportManager {
             sparkReporter.config().setTimeStampFormat("MMM dd, yyyy hh:mm:ss a");
             sparkReporter.config().setEncoding("UTF-8");
 
-            // Enable offline mode - report works without internet
-            sparkReporter.config().setOfflineMode(true);
+            // Online mode: styles/scripts load from a CDN, so the report is one self-contained HTML file
+            // that can be emailed (Gmail blocks the .js files offline mode writes into test-output/spark)
+            sparkReporter.config().setOfflineMode(false);
 
             // Configure view order for better management visibility
             // Dashboard first, then tests, then exceptions

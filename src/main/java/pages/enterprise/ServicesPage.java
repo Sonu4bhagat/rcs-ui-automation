@@ -92,6 +92,18 @@ public class ServicesPage {
         // Wait for URL change or header
         try {
             WebDriverWait urlWait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            // Right after login the dashboard is still loading and routes back to /dashboard/sms, swallowing the
+            // first click - click again (up to 2 more times) if the Services page didn't open
+            for (int attempt = 1; attempt <= 2 && !driver.getCurrentUrl().contains("service"); attempt++) {
+                try {
+                    urlWait.until(ExpectedConditions.urlContains("service"));
+                } catch (TimeoutException notYet) {
+                    System.out.println("[INFO] Services page not opened yet - clicking Services tab again (retry "
+                            + attempt + ")");
+                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();",
+                            driver.findElement(ServicesPageLocators.SERVICES_TAB));
+                }
+            }
             urlWait.until(ExpectedConditions.or(
                     ExpectedConditions.urlContains("services"),
                     ExpectedConditions.urlContains("service"),
