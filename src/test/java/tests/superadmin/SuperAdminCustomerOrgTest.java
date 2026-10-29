@@ -634,7 +634,11 @@ public class SuperAdminCustomerOrgTest extends BaseTest {
         Thread.sleep(500);
     }
 
-    @Test(priority = 24, description = "Logout from SuperAdmin session", dependsOnMethods = "testAddNewButtonClickable", alwaysRun = true)
+    // Depends on the last test of every chain: TestNG orders by dependencies before priority, so depending
+    // only on testAddNewButtonClickable let the deeper Roles tests run after the logout, on the login page
+    @Test(priority = 24, description = "Logout from SuperAdmin session", dependsOnMethods = {
+            "testAddNewButtonClickable", "testRolesViewIconClickable", "testRolesSearchWithResults",
+            "testRolesFilterInactiveAndAll", "testRoleFormSectionHeaders" }, alwaysRun = true)
     public void testLogout() throws InterruptedException {
         LoginPage loginPage = new LoginPage(driver);
         System.out.println("Step 6: Logging out...");

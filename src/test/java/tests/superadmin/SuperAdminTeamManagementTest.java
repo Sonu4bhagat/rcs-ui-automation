@@ -35,8 +35,14 @@ public class SuperAdminTeamManagementTest extends BaseTest {
             System.out.println("========================================\n");
 
             System.out.println("Step 1: Logging in as Super Admin...");
-            loginPage.loginWithSuperAdminCredentials();
-            Thread.sleep(2000);
+            // On a retry the previous (slow) login may have completed after all - the login form is
+            // then gone and typing into it fails, so only log in when not already in the Super Admin panel
+            if (driver.getCurrentUrl().contains("/sa/")) {
+                System.out.println("Already logged in as Super Admin - skipping login");
+            } else {
+                loginPage.loginWithSuperAdminCredentials();
+                Thread.sleep(2000);
+            }
 
             System.out.println("Step 2: Navigating to Team Management...");
             teamPage.navigateToTeamManagement();

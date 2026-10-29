@@ -808,8 +808,14 @@ public class CustomerOrgPage {
                     .until(ExpectedConditions.elementToBeClickable(CustomerOrgPageLocators.PROFILE_VIEW_ICON));
             viewIcon.click();
 
-            // Wait for modal/content to appear
-            Thread.sleep(1500);
+            // Wait for the view page to open. A fixed pause was too short on slow (CI) runs: the check failed
+            // and the page then navigated in the middle of the following tests.
+            try {
+                new WebDriverWait(driver, Duration.ofSeconds(15))
+                        .until(ExpectedConditions.urlContains("/profile/view/"));
+            } catch (TimeoutException e) {
+                // No view page - fall through to the older modal UI check
+            }
 
             // Confirmed live: View now opens a separate page (.../profile/view/{id}) showing the
             // profile Overview (Contact Info, Email Address, Account Information) - not a modal.
