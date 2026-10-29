@@ -1,6 +1,7 @@
 package pages.superadmin;
 
 import locators.superadmin.TeamManagementPageLocators;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -364,7 +365,24 @@ public class TeamManagementPage {
             throw new RuntimeException("Select role filter failed", e);
         } catch (Exception e) {
             System.err.println("Failed to select role filter: " + e.getMessage());
+            logVisibleFilterControls();
             throw new RuntimeException("Select role filter failed", e);
+        }
+    }
+
+    /** Lists the visible inputs and labels, to see what the filter panel offers when a locator stops matching. */
+    private void logVisibleFilterControls() {
+        try {
+            System.err.println("Visible filter controls:");
+            for (WebElement el : driver.findElements(By.xpath("//input | //label | //ng-select | //mat-select"))) {
+                if (el.isDisplayed()) {
+                    System.err.println("  <" + el.getTagName() + "> id='" + el.getAttribute("id") + "' role='"
+                            + el.getAttribute("role") + "' placeholder='" + el.getAttribute("placeholder")
+                            + "' text='" + el.getText().trim() + "'");
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Could not list filter controls: " + ex.getMessage());
         }
     }
 
@@ -453,8 +471,11 @@ public class TeamManagementPage {
             boolean allMatch = true;
             for (int i = 0; i < actualRoles.size(); i++) {
                 String actualRole = actualRoles.get(i);
-                // Check if the actual role contains the expected role (case-insensitive)
-                if (!actualRole.toLowerCase().contains(expectedRole.toLowerCase())) {
+                // The Role column shows only a user's first role, with a "+N" badge for the others, so the
+                // filtered role may be hidden behind the badge. A row fails only when it shows a single role
+                // that isn't the expected one - an unfiltered list has such rows, so a no-op filter still fails.
+                boolean hasHiddenRoles = actualRole.matches("(?s).*\\+\\d+\\s*$");
+                if (!actualRole.toLowerCase().contains(expectedRole.toLowerCase()) && !hasHiddenRoles) {
                     System.err.println("✗ Row " + (i + 1) + " has role '" + actualRole +
                             "' which does NOT match expected role '" + expectedRole + "'");
                     allMatch = false;

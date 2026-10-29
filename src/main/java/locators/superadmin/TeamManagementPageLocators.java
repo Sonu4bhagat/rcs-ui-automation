@@ -38,8 +38,9 @@ public class TeamManagementPageLocators {
 
         // ========== Filters ==========
         // Filters dropdown button
+        // (the button no longer has this id on Team Management - also match it by its "Filters" text)
         public static final By FILTERS_BUTTON = By.xpath(
-                        "//button[@id='serviceAccountsDropDown']");
+                        "//button[@id='serviceAccountsDropDown' or normalize-space()='Filters']");
 
         // Alternative filters button
         public static final By FILTERS_BUTTON_ALT = By.id("serviceAccountsDropDown");

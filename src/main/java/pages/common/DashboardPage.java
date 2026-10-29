@@ -182,6 +182,21 @@ public class DashboardPage {
                     // Logo not found
                 }
 
+                // Some service apps (e.g. CCS) show no logo at all. Accept the dashboard when the URL is a
+                // dashboard URL and the page shows the signed-in dashboard (menu entry plus welcome greeting) -
+                // a login or error page has neither.
+                if (currentUrl.toLowerCase().contains("dashboard")) {
+                    try {
+                        String bodyText = driver.findElement(By.tagName("body")).getText();
+                        if (bodyText.contains("Dashboard") && bodyText.contains("Welcome")) {
+                            System.out.println("  ✓ No logo on this service, but the signed-in dashboard is shown");
+                            return true;
+                        }
+                    } catch (Exception ex) {
+                        // Page text unavailable
+                    }
+                }
+
                 System.out.println("  ✗ SPARC logo not found - Dashboard did not load");
                 System.out.println("  Debug - Current URL: " + currentUrl);
                 System.out.println("  Debug - Page Title: " + driver.getTitle());
@@ -205,6 +220,14 @@ public class DashboardPage {
                     + (bodyText.isEmpty() ? "(empty)" : bodyText.substring(0, Math.min(300, bodyText.length()))));
         } catch (Exception e) {
             System.out.println("  Debug - Page text unavailable: " + e.getMessage());
+        }
+        try {
+            System.out.println("  Debug - iframes: " + driver.findElements(By.tagName("iframe")).size()
+                    + ", images: " + driver.findElements(By.tagName("img")).size()
+                    + ", body text length (JS): " + ((JavascriptExecutor) driver)
+                            .executeScript("return document.body.innerText.length"));
+        } catch (Exception e) {
+            System.out.println("  Debug - Page structure unavailable: " + e.getMessage());
         }
         String screenshot = utils.ScreenshotUtil.captureScreenshotAsBase64(driver);
         if (screenshot != null && utils.ExtentReportManager.getTest() != null) {
