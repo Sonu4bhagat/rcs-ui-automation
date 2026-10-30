@@ -209,23 +209,6 @@ public class LoginPage {
             int maxServices = -1;
             WebElement bestCard = null;
 
-            // The enterprise has several wallets with the same number of services, so "most services" alone
-            // picked a different wallet when the cards rendered in another order. Open the configured wallet
-            // (the one the Enterprise tests' data lives in) when it is listed.
-            String preferredWallet = ConfigReader.get("enterprise.wallet");
-            if (preferredWallet != null && !preferredWallet.isBlank()) {
-                for (WebElement card : cards) {
-                    if (card.getText().contains(preferredWallet.trim())) {
-                        System.out.println("[INFO] Selecting configured wallet " + preferredWallet.trim() + ".");
-                        WebElement openBtn = card.findElement(By.xpath(".//button[contains(text(), 'Open')]"));
-                        wait.until(ExpectedConditions.elementToBeClickable(openBtn)).click();
-                        return;
-                    }
-                }
-                System.out.println("[WARN] Configured wallet " + preferredWallet.trim()
-                        + " not listed - falling back to the wallet with most services.");
-            }
-
             for (WebElement card : cards) {
                 int serviceCount = card.findElements(LoginPageLocators.WALLET_SERVICE_ITEMS).size();
                 if (serviceCount > maxServices) {
@@ -360,11 +343,7 @@ public class LoginPage {
      * negative login tests start from here instead of from whatever the previous test left behind.
      */
     public void openFreshLoginForm(String loginUrl) {
-        // Reload only when not already on the login form: clearing the fields and closing the alert below
-        // resets it just as well, and each reload costs time (and is where a stalled browser hangs for 60s)
-        if (!driver.getCurrentUrl().contains("/login") || driver.findElements(LoginPageLocators.EMAIL_INPUT).isEmpty()) {
-            driver.get(loginUrl);
-        }
+        driver.get(loginUrl);
         for (By field : new By[] { LoginPageLocators.EMAIL_INPUT, LoginPageLocators.PASSWORD_INPUT }) {
             WebElement input = wait.until(ExpectedConditions.visibilityOfElementLocated(field));
             input.sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.DELETE);
