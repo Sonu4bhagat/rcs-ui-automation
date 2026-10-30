@@ -343,7 +343,11 @@ public class LoginPage {
      * negative login tests start from here instead of from whatever the previous test left behind.
      */
     public void openFreshLoginForm(String loginUrl) {
-        driver.get(loginUrl);
+        // Reload only when not already on the login form: clearing the fields and closing the alert below
+        // resets it just as well, and each reload costs time (and is where a stalled browser hangs for 60s)
+        if (!driver.getCurrentUrl().contains("/login") || driver.findElements(LoginPageLocators.EMAIL_INPUT).isEmpty()) {
+            driver.get(loginUrl);
+        }
         for (By field : new By[] { LoginPageLocators.EMAIL_INPUT, LoginPageLocators.PASSWORD_INPUT }) {
             WebElement input = wait.until(ExpectedConditions.visibilityOfElementLocated(field));
             input.sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.DELETE);
