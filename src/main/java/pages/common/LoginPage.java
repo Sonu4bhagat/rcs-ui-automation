@@ -337,6 +337,42 @@ public class LoginPage {
         ExtentReportManager.logPass("Successfully logged in as Reseller");
     }
 
+    /**
+     * Reloads the login page and empties both fields. The form keeps typed text and the alert box keeps
+     * its last message (e.g. "Please log in again to continue using the app" after a logout), so the
+     * negative login tests start from here instead of from whatever the previous test left behind.
+     */
+    public void openFreshLoginForm(String loginUrl) {
+        driver.get(loginUrl);
+        for (By field : new By[] { LoginPageLocators.EMAIL_INPUT, LoginPageLocators.PASSWORD_INPUT }) {
+            WebElement input = wait.until(ExpectedConditions.visibilityOfElementLocated(field));
+            input.sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.DELETE);
+        }
+        for (WebElement close : driver.findElements(LoginPageLocators.ALERT_CLOSE_BUTTON)) {
+            try {
+                if (close.isDisplayed()) {
+                    close.click();
+                }
+            } catch (Exception e) {
+                // Alert closed on its own meanwhile
+            }
+        }
+    }
+
+    /**
+     * Returns the login error alert text once it says {@code expected}, or after 15s whatever it says
+     * then - so a message left over from an earlier step is not mistaken for the response to this login.
+     */
+    public String getInvalidCredentialsErrorMessage(String expected) {
+        try {
+            wait.until(ExpectedConditions.textToBePresentInElementLocated(
+                    LoginPageLocators.INVALID_CREDENTIALS_ALERT, expected));
+        } catch (TimeoutException e) {
+            // Fall through: the caller's assertion reports the text actually shown
+        }
+        return getInvalidCredentialsErrorMessage();
+    }
+
     public String getInvalidCredentialsErrorMessage() {
         return wait.until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.INVALID_CREDENTIALS_ALERT))
                 .getText();

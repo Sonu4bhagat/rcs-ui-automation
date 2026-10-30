@@ -259,7 +259,7 @@ public class ResellerDashboardUserManagementPage {
     // ==================== Wallet Services page ====================
 
     public boolean isAddNewServiceButtonVisible() {
-        return isElementVisible(ResellerDashboardUserManagementPageLocators.ADD_NEW_SERVICE_BUTTON);
+        return waitUntilVisible(ResellerDashboardUserManagementPageLocators.ADD_NEW_SERVICE_BUTTON);
     }
 
     public void clickAddNewServiceButton() {
@@ -398,7 +398,19 @@ public class ResellerDashboardUserManagementPage {
     }
 
     public boolean isRolesAddNewButtonVisible() {
-        return isElementVisible(ResellerDashboardUserManagementPageLocators.ROLES_ADD_NEW_BUTTON);
+        // The Roles tab renders its toolbar after the role list loads - checking once right after
+        // navigating found nothing and failed the test intermittently
+        return waitUntilVisible(ResellerDashboardUserManagementPageLocators.ROLES_ADD_NEW_BUTTON);
+    }
+
+    /** Waits (up to 15s) for the URL to contain {@code expectedPart}, then returns the current URL. */
+    public String waitForUrlContaining(String expectedPart) {
+        try {
+            wait.until(ExpectedConditions.urlContains(expectedPart));
+        } catch (TimeoutException e) {
+            // Returned as-is so the caller's assertion reports the URL actually reached
+        }
+        return driver.getCurrentUrl();
     }
 
     public void clickRolesAddNewButton() {
@@ -423,6 +435,16 @@ public class ResellerDashboardUserManagementPage {
         try {
             return driver.findElement(locator).isDisplayed();
         } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Like {@link #isElementVisible} but gives the element up to 15s to appear. */
+    public boolean waitUntilVisible(By locator) {
+        try {
+            wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+            return true;
+        } catch (TimeoutException e) {
             return false;
         }
     }

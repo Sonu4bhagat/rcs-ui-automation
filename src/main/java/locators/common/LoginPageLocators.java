@@ -36,6 +36,7 @@ public class LoginPageLocators {
         // Error Messages
         public static final By INVALID_CREDENTIALS_ALERT = By
                         .xpath("//div[contains(@class, 'alert-error')]//p[@class='alert-sub-title']");
+        public static final By ALERT_CLOSE_BUTTON = By.xpath("//button[contains(@class, 'alert-cancel')]");
         public static final By EMAIL_REQUIRED_MSG = By.xpath(
                         "//div[contains(@class, 'form-block') and .//input[@id='loginEmail']]//span[@class='invalid-feedback']");
         public static final By PASSWORD_REQUIRED_MSG = By.xpath(

@@ -30,6 +30,29 @@ public class ResellerDashboardAnalyticsPage {
         } catch (Exception e) {
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tab);
         }
+        // Right after login the dashboard can still be wiring up its routes and ignore the first click
+        // (seen when several browsers run at once), so wait for the route and click once more if needed
+        try {
+            wait.until(ExpectedConditions.urlContains("dashboard/analytics"));
+        } catch (TimeoutException e) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", wait.until(
+                    ExpectedConditions.elementToBeClickable(ResellerDashboardAnalyticsPageLocators.ANALYTICS_TAB)));
+            try {
+                wait.until(ExpectedConditions.urlContains("dashboard/analytics"));
+            } catch (TimeoutException ignored) {
+                // The test's URL assertion reports where the page ended up
+            }
+        }
+    }
+
+    /** Like {@link #isElementVisible} but gives the element up to 15s to appear. */
+    public boolean waitUntilVisible(By locator) {
+        try {
+            wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+            return true;
+        } catch (TimeoutException e) {
+            return false;
+        }
     }
 
     public boolean isElementVisible(By locator) {

@@ -58,13 +58,15 @@
         </classes>
     </test>
 
+    <!-- Excluded from Jenkins runs - uncomment to run them again.
+         The RCS Assistant flow needs an Active RCS service account for the enterprise login
+         (RCSSEEV70 is Suspended in staging, so there is no SSO icon to open the RCS portal).
     <test name="Enterprise RCS Assistant Flow" preserve-order="true">
         <classes>
             <class name="tests.enterprise.EnterpriseRCSAssistantFlowTest"/>
         </classes>
     </test>
 
-    <!-- Excluded from Jenkins runs - uncomment to run them again
     <test name="Enterprise Assistant List CA" preserve-order="true">
         <classes>
             <class name="tests.enterprise.AssistantListTestCA"/>

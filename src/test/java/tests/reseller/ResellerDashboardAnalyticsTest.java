@@ -34,15 +34,17 @@ public class ResellerDashboardAnalyticsTest extends BaseTest {
     public void testAnalyticsTabClickable() throws InterruptedException {
         System.out.println("=== TC01: Verify Analytics Tab Clickable ===");
 
-        loginPage.loginWithResellerCredentials();
-        System.out.println("Logged in as Reseller.");
+        // A retry of this test starts already logged in - waiting for the login form then failed after 45s
+        if (driver.getCurrentUrl().contains("/login")) {
+            loginPage.loginWithResellerCredentials();
+            System.out.println("Logged in as Reseller.");
+        }
 
         analyticsPage.clickAnalyticsTab();
-        Thread.sleep(2500);
 
         Assert.assertTrue(driver.getCurrentUrl().contains("dashboard/analytics"),
                 "URL should navigate to the Analytics tab route. URL: " + driver.getCurrentUrl());
-        Assert.assertTrue(analyticsPage.isElementVisible(
+        Assert.assertTrue(analyticsPage.waitUntilVisible(
                 locators.reseller.ResellerDashboardAnalyticsPageLocators.ANALYTICS_HEADER),
                 "Performance Overview header should be displayed");
         System.out.println("Analytics tab clicked and Performance Overview loaded.");

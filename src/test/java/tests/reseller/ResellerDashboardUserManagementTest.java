@@ -381,9 +381,8 @@ public class ResellerDashboardUserManagementTest extends BaseTest {
         Assert.assertTrue(page.isAddNewServiceButtonVisible(), "Add New button should be visible on the services page");
         String urlBefore = driver.getCurrentUrl();
         page.clickAddNewServiceButton();
-        Thread.sleep(2000);
-
-        String urlAfter = driver.getCurrentUrl();
+        // The route change can take longer than a fixed 2s sleep on staging
+        String urlAfter = page.waitForUrlContaining("/create/service-account");
         System.out.println("URL before/after Add New click: " + urlBefore + " / " + urlAfter);
         Assert.assertNotEquals(urlAfter, urlBefore, "Add New should redirect to the service account detail page");
         Assert.assertTrue(urlAfter.contains("/create/service-account"),
@@ -714,13 +713,12 @@ public class ResellerDashboardUserManagementTest extends BaseTest {
         System.out.println("=== TC30: Verify Roles Add New Redirect ===");
 
         driver.navigate().to("https://stagingvault.smartping.io/rs/user-management/" + targetSvCustomerId + "/roles");
-        Thread.sleep(2000);
+        page.waitForTableData();
 
         Assert.assertTrue(page.isRolesAddNewButtonVisible(), "Add New button should be visible on Roles tab");
         page.clickRolesAddNewButton();
-        Thread.sleep(1500);
 
-        String url = driver.getCurrentUrl();
+        String url = page.waitForUrlContaining("/roles/add");
         System.out.println("URL after Roles Add New click: " + url);
         Assert.assertTrue(url.contains("/roles/add"), "Should redirect to add new role page. URL: " + url);
         System.out.println("Roles Add New redirect validated.");

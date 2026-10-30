@@ -164,6 +164,9 @@ public class DashboardPage {
                     return false;
                 }
             } catch (Exception e) {
+                // Read the URL again: services such as CCS first open on a token-exchange login route and only
+                // move to their dashboard during the wait above, so the URL read before it is out of date
+                currentUrl = driver.getCurrentUrl();
                 // Try alternative logo locator
                 try {
 

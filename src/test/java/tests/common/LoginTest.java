@@ -4,6 +4,7 @@ import base.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import pages.common.LoginPage;
+import utils.ConfigReader;
 
 public class LoginTest extends BaseTest {
 
@@ -38,39 +39,34 @@ public class LoginTest extends BaseTest {
     public void testLoginWithInvalidCredentials() {
         LoginPage login = new LoginPage(driver);
         System.out.println("Step 4: Login with Invalid Credentials");
+        login.openFreshLoginForm(ConfigReader.get("url"));
 
         login.enterUsername("invalid@test.com");
         login.enterPassword("WrongPass123");
         login.clickLoginButton();
 
-        String actualError = login.getInvalidCredentialsErrorMessage();
+        String actualError = login.getInvalidCredentialsErrorMessage("Invalid credentials");
         Assert.assertEquals(actualError, "Invalid credentials", "Error message mismatch");
-
-        // Refresh to clear state for next test if needed, or helper methods handle
-        // clearing
-        driver.navigate().refresh();
     }
 
     @Test(priority = 5, description = "Validate Error: Username present, Password blank")
     public void testLoginWithBlankPassword() {
         LoginPage login = new LoginPage(driver);
         System.out.println("Step 5: Login with Username only");
+        login.openFreshLoginForm(ConfigReader.get("url"));
 
         login.enterUsername("sonu.bhagat+3@altiquence.com");
-        // Clear password just in case (though fresh reload usually clears)
-        // login.enterPassword("");
         login.clickLoginButton();
 
         String passwordError = login.getPasswordRequiredMessage();
         Assert.assertTrue(passwordError.contains("required"), "Password required message missing");
-
-        driver.navigate().refresh();
     }
 
     @Test(priority = 6, description = "Validate Error: Username blank, Password present")
     public void testLoginWithBlankUsername() {
         LoginPage login = new LoginPage(driver);
         System.out.println("Step 6: Login with Password only");
+        login.openFreshLoginForm(ConfigReader.get("url"));
 
         login.enterPassword("Test@2036");
         login.clickLoginButton();

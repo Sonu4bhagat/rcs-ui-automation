@@ -124,6 +124,9 @@ public class EnterpriseReportsPageLocators {
                                         "//table//tbody//tr//td[contains(@class, 'status')] | " +
                                         "//tbody//tr//td//span[contains(@class, 'badge')]");
 
+        // Status of each service account row (<div class="status_indicator active|suspended ...">)
+        public static final By ROW_STATUS_INDICATORS = By.xpath("//tbody//tr//div[contains(@class, 'status_indicator')]");
+
         // Dynamic locator for status by row
         public static By getStatusByRow(int row) {
                 return By.xpath("(//tbody//tr)[" + row + "]//span[contains(@class, 'badge')] | " +

@@ -35,8 +35,13 @@ public class DriverFactory {
         Logger.getLogger("org.openqa.selenium").setLevel(Level.SEVERE);
 
         if (!driverBinaryResolved) {
-            WebDriverManager.chromedriver().setup();
-            driverBinaryResolved = true;
+            // Role suites start their browsers at the same time - resolve (and download) chromedriver only once
+            synchronized (DriverFactory.class) {
+                if (!driverBinaryResolved) {
+                    WebDriverManager.chromedriver().setup();
+                    driverBinaryResolved = true;
+                }
+            }
         }
 
         ChromeOptions options = new ChromeOptions();

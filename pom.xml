@@ -17,6 +17,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <suiteXmlFile>testng.xml</suiteXmlFile>
+        <suite.threads>3</suite.threads>
     </properties>
 
     <dependencies>
@@ -144,6 +145,15 @@
                     </suiteXmlFiles>
                     <forkCount>1</forkCount>
                     <reuseForks>true</reuseForks>
+                    <properties>
+                        <!-- How many suite files may run at the same time. utils.RoleSuitesInParallel arranges a
+                             multi-suite run so only the role suites (one account each) overlap; a single suite
+                             file is unaffected. Override with -Dsuite.threads=1 to run everything one by one. -->
+                        <property>
+                            <name>suitethreadpoolsize</name>
+                            <value>${suite.threads}</value>
+                        </property>
+                    </properties>
                 </configuration>
             </plugin>
 

@@ -724,6 +724,15 @@ public class EnterpriseReportsPage {
      * 2. Last column of each row
      * 3. Falls back to row 1 if no status detected
      */
+    /** Status texts (e.g. "Active", "Suspended") of the rows in the service account list shown now. */
+    public List<String> getRowStatuses() {
+        List<String> statuses = new java.util.ArrayList<>();
+        for (WebElement status : driver.findElements(EnterpriseReportsPageLocators.ROW_STATUS_INDICATORS)) {
+            statuses.add(status.getText().trim());
+        }
+        return statuses;
+    }
+
     public int findFirstNonFailedRow() {
         try {
             // Strategy 1: Try STATUS_CELLS locator (badge-based)
