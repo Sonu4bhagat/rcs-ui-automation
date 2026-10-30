@@ -36,7 +36,14 @@ public class BaseTest {
         DriverFactory.initializeDriver();
         driver = DriverFactory.getDriver();
         // Initial navigation
-        driver.get(ConfigReader.get("url"));
+        try {
+            driver.get(ConfigReader.get("url"));
+        } catch (RuntimeException e) {
+            // TestNG skips @AfterClass when @BeforeClass fails, so close the browser here - otherwise every
+            // failed start (e.g. network down) leaves a Chrome and chromedriver running for good
+            DriverFactory.quitDriver();
+            throw e;
+        }
     }
 
     @BeforeMethod
