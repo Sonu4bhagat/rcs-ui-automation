@@ -589,9 +589,32 @@ public class EnterpriseWalletPage {
      */
     public void clickCancelOnPopup() {
         try {
-            WebElement cancelBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                    EnterpriseWalletPageLocators.POPUP_CANCEL_BUTTON));
-            cancelBtn.click();
+            // The locator matches more than one button and the first in the page isn't the popup's Cancel (it
+            // was never clickable while the popup's Cancel was on screen) - use the visible "Cancel", falling
+            // back to any other visible match (e.g. the popup's close button)
+            WebElement cancelBtn = wait.until(d -> {
+                WebElement fallback = null;
+                for (WebElement btn : d.findElements(EnterpriseWalletPageLocators.POPUP_CANCEL_BUTTON)) {
+                    try {
+                        if (btn.isDisplayed() && btn.isEnabled()) {
+                            if (btn.getText().trim().equalsIgnoreCase("Cancel")) {
+                                return btn;
+                            }
+                            if (fallback == null) {
+                                fallback = btn;
+                            }
+                        }
+                    } catch (Exception staleOrHidden) {
+                        // Try the next match
+                    }
+                }
+                return fallback;
+            });
+            try {
+                cancelBtn.click();
+            } catch (Exception clickEx) {
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", cancelBtn);
+            }
             wait.until(ExpectedConditions.presenceOfElementLocated(EnterpriseWalletPageLocators.WALLET_MENU_ITEM));
             System.out.println("Clicked Cancel on popup");
         } catch (Exception e) {
@@ -672,8 +695,12 @@ public class EnterpriseWalletPage {
      */
     public boolean isPopupClosed() {
         try {
-            // Dropdown animation pause removed
-            return !isElementVisible(EnterpriseWalletPageLocators.GENERATE_REPORT_POPUP);
+            // Wait for the popup's close animation: checked right after the Cancel click, it was still on
+            // screen and the test failed although the popup did close
+            return new WebDriverWait(driver, Duration.ofSeconds(10))
+                    .until(d -> !isElementVisible(EnterpriseWalletPageLocators.GENERATE_REPORT_POPUP));
+        } catch (org.openqa.selenium.TimeoutException e) {
+            return false; // Still open after 10s
         } catch (Exception e) {
             return true;
         }

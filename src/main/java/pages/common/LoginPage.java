@@ -352,6 +352,15 @@ public class LoginPage {
             ExtentReportManager.logStep("Logout from application");
             System.out.println("[INFO] Attempting to logout...");
 
+            // Already on the login form (the session ended earlier): there is no profile menu to open, and
+            // looking for it cost 45s per attempt before failing - the user is logged out either way
+            if (!driver.findElements(LoginPageLocators.EMAIL_INPUT).isEmpty()
+                    && driver.findElements(LoginPageLocators.PROFILE_MENU).isEmpty()) {
+                System.out.println("[WARN] Session had already ended - on the login page, nothing to log out from.");
+                ExtentReportManager.logWarning("Session had already ended before logout - already on the login page");
+                return;
+            }
+
             // Wait for any overlay to disappear
             try {
                 WebDriverWait waitShort = new WebDriverWait(driver, Duration.ofSeconds(3));

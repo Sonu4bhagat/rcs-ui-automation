@@ -132,6 +132,12 @@ public class RCSAssistantTestHelper {
         }
 
         mainWindowHandle = driver.getWindowHandle();
+        // Only active accounts offer SSO - a suspended RCS account shows just the View icon, and waiting for
+        // the SSO icon then timed out (30s, twice with the retry). Skip the flow with the reason instead.
+        if (!servicesPage.isSSOIconAvailable(selectedServiceRow)) {
+            throw new org.testng.SkipException("No SSO icon for the RCS service account in row " + selectedServiceRow
+                    + " (the account is likely not Active) - the RCS Assistant flow needs an active RCS account");
+        }
         servicesPage.clickSSOIcon(selectedServiceRow);
 
         try {
