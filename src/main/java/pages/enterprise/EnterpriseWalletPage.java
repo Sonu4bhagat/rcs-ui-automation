@@ -345,8 +345,10 @@ public class EnterpriseWalletPage {
      */
     public double getTotalCreditAmount() {
         try {
-            WebElement creditElement = wait.until(ExpectedConditions.visibilityOfElementLocated(
-                    EnterpriseWalletPageLocators.TOTAL_CREDIT_AMOUNT));
+            // 5s, not the page's 15s: the wallet page is already loaded here, and on wallets without a Total
+            // Credit label the full wait was spent on every run
+            WebElement creditElement = new WebDriverWait(driver, Duration.ofSeconds(5)).until(
+                    ExpectedConditions.visibilityOfElementLocated(EnterpriseWalletPageLocators.TOTAL_CREDIT_AMOUNT));
             String text = creditElement.getText().replaceAll("[^0-9.]", "");
             return text.isEmpty() ? 0.0 : Double.parseDouble(text);
         } catch (Exception e) {
@@ -360,8 +362,9 @@ public class EnterpriseWalletPage {
      */
     public double getTotalDebitAmount() {
         try {
-            WebElement debitElement = wait.until(ExpectedConditions.visibilityOfElementLocated(
-                    EnterpriseWalletPageLocators.TOTAL_DEBIT_AMOUNT));
+            // 5s for the same reason as getTotalCreditAmount
+            WebElement debitElement = new WebDriverWait(driver, Duration.ofSeconds(5)).until(
+                    ExpectedConditions.visibilityOfElementLocated(EnterpriseWalletPageLocators.TOTAL_DEBIT_AMOUNT));
             String text = debitElement.getText().replaceAll("[^0-9.]", "");
             return text.isEmpty() ? 0.0 : Double.parseDouble(text);
         } catch (Exception e) {
@@ -554,7 +557,24 @@ public class EnterpriseWalletPage {
      */
     public boolean isGenerateReportPopupOpen() {
         try {
-            return isElementVisible(EnterpriseWalletPageLocators.GENERATE_REPORT_POPUP);
+            // Wait for the popup's open animation instead of checking right after the click (it was reported
+            // missing, and the retry's click then hit the open popup). The popup is an ngb-modal-window; the
+            // broad locator alone only checks its first match, which can be a hidden overlay container.
+            By modalWindow = By.xpath("//ngb-modal-window | //mat-dialog-container");
+            return new WebDriverWait(driver, Duration.ofSeconds(10)).until(d -> {
+                for (WebElement modal : d.findElements(modalWindow)) {
+                    try {
+                        if (modal.isDisplayed()) {
+                            return true;
+                        }
+                    } catch (Exception stale) {
+                        // Try the next one
+                    }
+                }
+                return isElementVisible(EnterpriseWalletPageLocators.GENERATE_REPORT_POPUP);
+            });
+        } catch (org.openqa.selenium.TimeoutException e) {
+            return false; // Not open after 10s
         } catch (Exception e) {
             return false;
         }

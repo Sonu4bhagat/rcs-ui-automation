@@ -1077,6 +1077,17 @@ public class EnterpriseReportsPage {
                 return true;
             }
 
+            // If we've been SSO-redirected off Vault's own domain entirely, "Reports tab" is a Vault-specific
+            // UI concept that doesn't apply to whatever foreign product we landed on (OCMP, WABA support-admin,
+            // a statistics SPA, etc.) - the redirect succeeding is what's verifiable. Checked before the Vault
+            // UI lookups below, which can't match there and cost a 15s timeout each time.
+            if (!isOnVaultDomain(currentUrl)) {
+                System.out.println(
+                        "Reports tab concept doesn't apply on external domain (" + currentUrl
+                                + ") - treating successful redirect as validation.");
+                return true;
+            }
+
             // Method 2: Check if Reports tab link is active
             try {
                 boolean isActive = isElementVisible(EnterpriseReportsPageLocators.REPORTS_TAB_LINK);
@@ -1109,17 +1120,6 @@ public class EnterpriseReportsPage {
                 }
             } catch (Exception e) {
                 // Not found
-            }
-
-            // Method 5: If we've been SSO-redirected off Vault's own domain entirely,
-            // "Reports tab" is a Vault-specific UI concept that doesn't apply to
-            // whatever foreign product we landed on (OCMP, WABA support-admin, a
-            // statistics SPA, etc.) - the redirect succeeding is what's verifiable.
-            if (!isOnVaultDomain(currentUrl)) {
-                System.out.println(
-                        "Reports tab concept doesn't apply on external domain (" + currentUrl
-                                + ") - treating successful redirect as validation.");
-                return true;
             }
 
             System.out.println("Reports tab is NOT selected");

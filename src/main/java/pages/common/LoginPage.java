@@ -74,10 +74,24 @@ public class LoginPage {
 
     public boolean isOTPRequired() {
         try {
-            // Check if OTP field is visible within a short timeout
+            // Up to 5s for the OTP field, but stop as soon as the browser is on a signed-in page - OTP is
+            // usually off, and waiting out the full 5s added that to every login
+            // (returns a String, not a Boolean: until() treats false as "keep waiting")
             WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(5));
-            return shortWait.until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.OTP_INPUT_FIELDS))
-                    .isDisplayed();
+            String outcome = shortWait.until(d -> {
+                // URL first: the OTP lookup below costs the implicit wait whenever there is no OTP field
+                String url = d.getCurrentUrl();
+                if (url.contains("dashboard") || url.contains("select-wallet") || url.contains("/sa/")
+                        || url.contains("/ep/") || url.contains("/rs/") || url.contains("/customer/")) {
+                    return "signed-in";
+                }
+                List<WebElement> otpFields = d.findElements(LoginPageLocators.OTP_INPUT_FIELDS);
+                if (!otpFields.isEmpty() && otpFields.get(0).isDisplayed()) {
+                    return "otp";
+                }
+                return null; // still on the login page - keep waiting
+            });
+            return "otp".equals(outcome);
         } catch (TimeoutException e) {
             return false;
         }
@@ -168,10 +182,13 @@ public class LoginPage {
                 return;
             }
 
-            // 2. Wait for Header
+            // 2. Wait for the header or the wallet cards - the current page has no such header, so waiting
+            // for it alone cost the full 10s on every Enterprise login before the cards were used anyway
             try {
-                wait.until(ExpectedConditions.visibilityOfElementLocated(
-                        By.xpath("//*[contains(text(), 'Select Wallet') or contains(text(), 'Select Account')]")));
+                wait.until(ExpectedConditions.or(
+                        ExpectedConditions.visibilityOfElementLocated(By.xpath(
+                                "//*[contains(text(), 'Select Wallet') or contains(text(), 'Select Account')]")),
+                        ExpectedConditions.presenceOfElementLocated(LoginPageLocators.WALLET_CARD)));
                 System.out.println("[INFO] Wallet selection screen detected.");
             } catch (TimeoutException e) {
                 System.out.println("[DEBUG] Wallet header not found. Attempting to find cards directly...");

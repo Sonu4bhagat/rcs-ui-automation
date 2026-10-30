@@ -555,6 +555,12 @@ public class EnterpriseRateCardPage {
      * Navigate back from details page to rate card list
      */
     public void navigateBackToRateCardList() {
+        // Called even when no details page was opened (e.g. no active rate cards): there is no Back button
+        // then - waiting for it cost 15s, and the browser-back fallback left the Rate Card page altogether
+        if (driver.getCurrentUrl().replaceAll("/+$", "").endsWith("/rate-card")) {
+            System.out.println("Already on Rate Card list - no need to navigate back");
+            return;
+        }
         try {
             WebElement backBtn = wait.until(ExpectedConditions.elementToBeClickable(
                     EnterpriseRateCardPageLocators.BACK_BUTTON));
