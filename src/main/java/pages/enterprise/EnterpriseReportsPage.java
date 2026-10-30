@@ -316,6 +316,35 @@ public class EnterpriseReportsPage {
      * Apply Active status filter
      * Flow: Click Filters CTA → Select Status dropdown → Choose Active → Apply
      */
+    /**
+     * Returns the first match of the first locator whose first match is displayed (same rule as calling
+     * findElement on each locator in order), polling for up to timeoutSeconds; null if none appears.
+     * Lookups skip the implicit wait so locators that don't match cost nothing.
+     */
+    private WebElement findFirstDisplayed(By[] locators, int timeoutSeconds) {
+        Duration implicitWait = driver.manage().timeouts().getImplicitWaitTimeout();
+        driver.manage().timeouts().implicitlyWait(Duration.ZERO);
+        try {
+            return new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds)).until(d -> {
+                for (By locator : locators) {
+                    List<WebElement> matches = d.findElements(locator);
+                    try {
+                        if (!matches.isEmpty() && matches.get(0).isDisplayed()) {
+                            return matches.get(0);
+                        }
+                    } catch (Exception e) {
+                        // Stale - try the next locator
+                    }
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            return null;
+        } finally {
+            driver.manage().timeouts().implicitlyWait(implicitWait);
+        }
+    }
+
     public void applyActiveFilter() {
         try {
             System.out.println("Applying Active filter...");
@@ -380,22 +409,21 @@ public class EnterpriseReportsPage {
                     By.cssSelector("mat-select")
             };
 
-            for (By locator : dropdownLocators) {
+            // Only a late locator matches, and with the implicit wait every miss before it cost 2s (~14s
+            // per filter). Poll all locators together instead, still allowing the panel time to render.
+            WebElement dropdown = findFirstDisplayed(dropdownLocators, 10);
+            if (dropdown != null) {
                 try {
-                    WebElement dropdown = driver.findElement(locator);
-                    if (dropdown != null && dropdown.isDisplayed()) {
-                        System.out.println("Found Status dropdown with locator: " + locator);
-                        ((JavascriptExecutor) driver).executeScript(
-                                "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", dropdown);
-                        Thread.sleep(500);
-                        dropdown.click();
-                        System.out.println("Clicked Status dropdown");
-                        dropdownOpened = true;
-                        Thread.sleep(1000); // Wait for dropdown options to appear
-                        break;
-                    }
+                    System.out.println("Found Status dropdown");
+                    ((JavascriptExecutor) driver).executeScript(
+                            "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", dropdown);
+                    Thread.sleep(500);
+                    dropdown.click();
+                    System.out.println("Clicked Status dropdown");
+                    dropdownOpened = true;
+                    Thread.sleep(1000); // Wait for dropdown options to appear
                 } catch (Exception ex) {
-                    // Continue to next locator
+                    // Fall through to the radio button search below
                 }
             }
 
@@ -552,6 +580,11 @@ public class EnterpriseReportsPage {
             int inactiveCount = 0;
             int otherCount = 0;
 
+            // The rows are already loaded, so look up each row's status locators without the implicit
+            // wait - with it, every locator that doesn't match cost 2s per row (~16s for one row)
+            Duration implicitWait = driver.manage().timeouts().getImplicitWaitTimeout();
+            driver.manage().timeouts().implicitlyWait(Duration.ZERO);
+            try {
             for (int i = 0; i < rows.size(); i++) {
                 WebElement row = rows.get(i);
                 String statusText = "";
@@ -600,6 +633,9 @@ public class EnterpriseReportsPage {
                     System.out.println("Row " + (i + 1) + ": Status = UNKNOWN ('" + statusText + "')");
                     otherCount++;
                 }
+            }
+            } finally {
+                driver.manage().timeouts().implicitlyWait(implicitWait);
             }
 
             System.out.println("=== Filter Validation Summary ===");

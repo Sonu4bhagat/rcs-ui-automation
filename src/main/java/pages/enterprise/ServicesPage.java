@@ -24,14 +24,21 @@ public class ServicesPage {
 
     // Helper to wait for loading spinner to disappear
     private void waitForLoadingSpinner() {
+        // Checked without the implicit wait: usually no spinner shows, and the 2s window plus the 2s implicit
+        // wait on each lookup cost 2-4s per call. A spinner shows right after a click, so 1s is enough to see
+        // it, and the callers' own waits (cards visible, rows filled) still cover slower loads.
+        Duration implicitWait = driver.manage().timeouts().getImplicitWaitTimeout();
+        driver.manage().timeouts().implicitlyWait(Duration.ZERO);
         try {
             // Short wait for spinner to appear
-            WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(2));
-            shortWait.until(ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.LOADING_SPINNER));
+            new WebDriverWait(driver, Duration.ofSeconds(1)).pollingEvery(Duration.ofMillis(200))
+                    .until(ExpectedConditions.visibilityOfElementLocated(ServicesPageLocators.LOADING_SPINNER));
             // If appeared, wait for it to disappear
             wait.until(ExpectedConditions.invisibilityOfElementLocated(ServicesPageLocators.LOADING_SPINNER));
         } catch (Exception e) {
             // Spinner didn't appear or disappeared quickly - ignore
+        } finally {
+            driver.manage().timeouts().implicitlyWait(implicitWait);
         }
     }
 

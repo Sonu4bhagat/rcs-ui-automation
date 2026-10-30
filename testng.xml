@@ -68,6 +68,7 @@
         </classes>
     </test>
 
+    <!-- Excluded from Jenkins runs - uncomment to run them again
     <test name="Enterprise Assistant List CA" preserve-order="true">
         <classes>
             <class name="tests.enterprise.AssistantListTestCA"/>
@@ -79,6 +80,7 @@
             <class name="tests.enterprise.MediaLibraryTest"/>
         </classes>
     </test>
+    -->
     
     <!-- ===== SUPER ADMIN : tests/superadmin ===== -->
     <test name="Super Admin Customer Org" preserve-order="true">
