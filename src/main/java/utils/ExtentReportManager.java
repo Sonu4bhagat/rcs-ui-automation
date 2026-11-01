@@ -162,7 +162,7 @@ public class ExtentReportManager {
     /**
      * User role a test class belongs to, derived from its folder (package) under tests/:
      * tests.enterprise -> "Enterprise", tests.reseller -> "Reseller",
-     * tests.superadmin -> "Super Admin", tests.common -> "Common".
+     * tests.superadmin -> "Super Admin", tests.common -> "Common", tests.ccs -> "CCS".
      */
     public static String roleOf(Class<?> testClass) {
         String pkg = testClass.getPackage() != null ? testClass.getPackage().getName() : "";
@@ -172,6 +172,7 @@ public class ExtentReportManager {
             case "reseller": return "Reseller";
             case "superadmin": return "Super Admin";
             case "common": return "Common";
+            case "ccs": return "CCS";
             default: return "Other";
         }
     }

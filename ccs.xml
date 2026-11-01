@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+    CCS suite: all classes in src/test/java/tests/ccs (CCS project, own Enterprise account - enums.CCSUser).
+    Each class is its own <test>, so classes run one after another.
+    Run: mvn test -DsuiteXmlFile=ccs.xml
+-->
+<suite name="CCS Automation Suite" verbose="1" parallel="classes" thread-count="4">
+    <listeners>
+        <listener class-name="utils.AnnotationTransformer"/>
+    </listeners>
+
+    <!-- Part A: Enterprise login and CCS SSO into CCS-Live -->
+    <test name="CCS Enterprise SSO" preserve-order="true">
+        <classes>
+            <class name="tests.ccs.CCSEnterpriseSSOTest"/>
+        </classes>
+    </test>
+</suite>

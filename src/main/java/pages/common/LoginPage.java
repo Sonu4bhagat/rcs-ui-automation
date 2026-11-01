@@ -267,6 +267,40 @@ public class LoginPage {
         ExtentReportManager.logPass("Successfully logged in as Enterprise user");
     }
 
+    /**
+     * Same flow as {@link #loginWithEnterpriseCredentials()}, but with the CCS project's Enterprise
+     * account (enums.CCSUser) - used by the tests in tests/ccs.
+     */
+    public void loginWithCCSEnterpriseCredentials() {
+        ExtentReportManager.logStep("Login with CCS Enterprise credentials");
+        String username = enums.CCSUser.ENTERPRISE.getUsername();
+        String password = enums.CCSUser.ENTERPRISE.getPassword();
+
+        enterUsername(username);
+        enterPassword(password);
+        clickLoginButton();
+
+        handleOTP(username, password);
+
+        // The CCS account opens on the wallet selection screen ("CCS Unified Wallet")
+        try {
+            WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(5));
+            shortWait.until(ExpectedConditions.visibilityOfElementLocated(LoginPageLocators.WALLET_OPEN_BUTTON));
+            ExtentReportManager.logStep("Select wallet from wallet selection screen");
+            System.out.println("[INFO] Wallet selection screen detected. Opening first wallet...");
+            driver.findElement(LoginPageLocators.WALLET_OPEN_BUTTON).click();
+        } catch (TimeoutException e) {
+            ExtentReportManager.logInfo("No wallet selection screen - direct dashboard access");
+            System.out.println("[INFO] Wallet selection screen not found, assuming direct dashboard access.");
+        }
+
+        ExtentReportManager.logStep("Verify Enterprise dashboard is loaded");
+        if (!isDashboardLoaded(UserRole.ENTERPRISE)) {
+            throw new IllegalStateException("CCS Enterprise dashboard did not load.");
+        }
+        ExtentReportManager.logPass("Successfully logged in as CCS Enterprise user");
+    }
+
     public void loginWithEnterpriseMaxServices() {
         String username = ConfigReader.get("enterprise.email");
         String password = ConfigReader.get("enterprise.password");

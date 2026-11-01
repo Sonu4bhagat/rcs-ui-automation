@@ -26,6 +26,9 @@ public class DashboardPageLocators {
         public static final By HEADER_USER_INFO = By
                         .xpath("//div[contains(@class, 'sidenav-header')]//div | //div[contains(@class, 'user-info')]");
 
+        // Role badge under the user name in the header (e.g. "enterprise")
+        public static final By USER_ROLE_BADGE = By.xpath("//span[contains(@class, 'service-badge')]");
+
         // Dynamic locator to check for specific role name
         public static By getRoleDisplayLocator(String roleName) {
                 return By.xpath(
