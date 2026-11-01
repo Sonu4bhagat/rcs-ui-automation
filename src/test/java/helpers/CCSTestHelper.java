@@ -36,6 +36,11 @@ public class CCSTestHelper {
     // Set once an agent was deleted to free a slot - a retried test must not delete a second agent
     private boolean agentDeleted;
 
+    // Agent created by CCSEnterpriseUsers (Part B) in this execution - shared with the later CCS parts, which run
+    // in the same JVM but in their own browser
+    private static volatile String createdAgentName;
+    private static volatile String createdAgentEmail;
+
     public CCSTestHelper(WebDriver driver) {
         this.driver = driver;
         this.servicesPage = new ServicesPage(driver);
@@ -186,6 +191,46 @@ public class CCSTestHelper {
         String deleted = usersPage.deleteUserAtRow(oldestRow);
         agentDeleted = true;
         ExtentReportManager.logWarning("Deleted agent " + deleted + " to free an agent slot");
+    }
+
+    /** Records the agent created by Part B so the later CCS parts reuse it instead of creating another. */
+    public static void rememberCreatedAgent(String name, String email) {
+        createdAgentName = name;
+        createdAgentEmail = email;
+    }
+
+    /**
+     * Name of the agent created by Part B: the one created earlier in this execution, otherwise the latest agent
+     * created by Part B in an earlier run (Username is a plus-alias of {@code automationEmail}, highest User Id).
+     * Returns null when there is none. Leaves the driver on the Users list when it had to look it up.
+     */
+    public String getPartBAgentName(CCSUsersPage usersPage, String automationEmail) {
+        if (createdAgentName != null) {
+            System.out.println("Using the agent created by Part B in this run: " + createdAgentName + " (" + createdAgentEmail + ")");
+            return createdAgentName;
+        }
+        String aliasPrefix = automationEmail.split("@", 2)[0].split("\\+", 2)[0].toLowerCase() + "+";
+        openUsersListIfNeeded(usersPage);
+        String latestName = null;
+        long latestId = -1;
+        for (int row = 1; row <= usersPage.getRowCount(); row++) {
+            String username = usersPage.getCellText(row, CCSUsersPageLocators.COL_USERNAME).toLowerCase();
+            if (!username.startsWith(aliasPrefix)
+                    || !usersPage.getCellText(row, CCSUsersPageLocators.COL_ROLE).equalsIgnoreCase("Agent")) {
+                continue;
+            }
+            try {
+                long id = Long.parseLong(usersPage.getCellText(row, CCSUsersPageLocators.COL_USER_ID));
+                if (id > latestId) {
+                    latestId = id;
+                    latestName = usersPage.getCellText(row, CCSUsersPageLocators.COL_NAME);
+                }
+            } catch (NumberFormatException e) {
+                // Row without a numeric User Id - not considered
+            }
+        }
+        System.out.println("Latest Part B agent in the Users list: " + latestName + " (User Id " + latestId + ")");
+        return latestName;
     }
 
     /** Asserts exactly one user with {@code email} is listed with the given Name, Contact, Role Agent and WebRTC. */

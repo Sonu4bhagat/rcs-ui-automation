@@ -23,4 +23,11 @@
             <class name="tests.ccs.CCSEnterpriseUsers"/>
         </classes>
     </test>
+
+    <!-- Part C: Call Flow - Queue with the Part B agent and Call Waiting Type "Queue" (starts on the CCS-Live dashboard) -->
+    <test name="CCS Enterprise Call Flow" preserve-order="true">
+        <classes>
+            <class name="tests.ccs.CCSEnterpriseCallFlow"/>
+        </classes>
+    </test>
 </suite>

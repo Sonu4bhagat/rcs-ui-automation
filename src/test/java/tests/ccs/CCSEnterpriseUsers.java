@@ -314,6 +314,7 @@ public class CCSEnterpriseUsers extends BaseTest {
         Assert.assertFalse(usersPage.isOnAddUserForm(), "User was not saved - still on the Add User form. Message: [" + message + "]");
         Assert.assertFalse(message.toLowerCase().matches(".*(error|fail|invalid|already|limit).*"), "Save reported a problem: " + message);
         userCreated = true;
+        CCSTestHelper.rememberCreatedAgent(newUserName, newUserEmail); // reused by Part C (CCSEnterpriseCallFlow)
         ExtentReportManager.logPass("User saved: " + newUserEmail + (message.isEmpty() ? "" : " - " + message));
     }
 
