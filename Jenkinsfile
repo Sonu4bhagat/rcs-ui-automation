@@ -10,7 +10,8 @@ def TEST_GROUPS = [
     [param: 'COMMON',      name: 'Common',      file: 'common.xml'],
     [param: 'ENTERPRISE',  name: 'Enterprise',  file: 'enterprise.xml'],
     [param: 'RESELLER',    name: 'Reseller',    file: 'reseller.xml'],
-    [param: 'SUPER_ADMIN', name: 'Super Admin', file: 'superadmin.xml']
+    [param: 'SUPER_ADMIN', name: 'Super Admin', file: 'superadmin.xml'],
+    [param: 'CCS',         name: 'CCS',         file: 'ccs.xml']
 ]
 
 pipeline {
@@ -29,6 +30,7 @@ pipeline {
         booleanParam(name: 'ENTERPRISE',  defaultValue: false, description: 'Enterprise portal tests (tests/enterprise)')
         booleanParam(name: 'RESELLER',    defaultValue: false, description: 'Reseller portal tests (tests/reseller)')
         booleanParam(name: 'SUPER_ADMIN', defaultValue: false, description: 'Super Admin portal tests (tests/superadmin)')
+        booleanParam(name: 'CCS',         defaultValue: false, description: 'CCS project tests - CCS Enterprise login, SSO to CCS-Live, Users management (tests/ccs)')
         string(name: 'TEST_CLASS', defaultValue: '',
                description: 'Optional - run only specific class(es) instead of the boxes above. e.g. LoginTest  |  LoginTest,SuperAdminDashboardTest  |  LoginTest#testSuperAdminLogin. Leave empty to use the boxes. If nothing is ticked and this is empty, ALL tests run.')
         booleanParam(name: 'HEADLESS', defaultValue: true, description: 'Run browser in headless mode')

@@ -268,6 +268,7 @@ public class EmailReportSender implements IReporter {
                 case "Enterprise": case "enterprise.xml": return "Enterprise portal (enterprise.xml)";
                 case "Reseller": case "reseller.xml": return "Reseller portal (reseller.xml)";
                 case "Super Admin": case "superadmin.xml": return "Super Admin portal (superadmin.xml)";
+                case "CCS": case "ccs.xml": return "CCS project (ccs.xml)";
                 default: return "Single test class (" + suite + ")";
             }
         }

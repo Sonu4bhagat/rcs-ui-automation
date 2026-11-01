@@ -23,7 +23,7 @@ REST API tests exist under `src/test/java/api` but are not yet part of the regre
 
 ## How it runs
 
-- **Jenkins pipeline** with a choice of suite: everything, or one portal at a time (`enterprise.xml`, `reseller.xml`, `superadmin.xml`).
+- **Jenkins pipeline** with a choice of suite: everything, or one portal at a time (`enterprise.xml`, `reseller.xml`, `superadmin.xml`, `ccs.xml`).
 - **Headless Chrome**, so it runs on the Jenkins agent without a display.
 - **Email summary after every Jenkins build**: pass/fail counts, pass rate, results per portal and class, failed and skipped tests with reasons, and the detailed HTML report attached.
 - **Detailed HTML report** (Extent) with step-by-step logs and a screenshot for every failure.

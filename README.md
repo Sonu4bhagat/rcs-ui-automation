@@ -49,7 +49,8 @@ RCS_Automation/
 │   │   ├── common/      tests covering all roles (LoginTest)
 │   │   ├── enterprise/  tests that log in as an Enterprise user
 │   │   ├── reseller/    tests that log in as a Reseller user
-│   │   └── superadmin/  tests that log in as Super Admin
+│   │   ├── superadmin/  tests that log in as Super Admin
+│   │   └── ccs/         CCS project: CCS Enterprise account, SSO to CCS-Live, Users management
 │   ├── helpers/       Reusable test steps shared across classes
 │   └── api/           REST API tests (not part of the UI suites)
 ├── src/test/resources/config.properties
@@ -58,6 +59,7 @@ RCS_Automation/
 ├── enterprise.xml     Enterprise suite
 ├── reseller.xml       Reseller suite
 ├── superadmin.xml     Super Admin suite
+├── ccs.xml            CCS project suite
 ├── Jenkinsfile        CI pipeline
 └── pom.xml
 ```
@@ -103,7 +105,7 @@ Settings are read from `src/test/resources/config.properties`. Any key can be ov
 mvn clean test -DsuiteXmlFile=testng.xml
 
 # One role
-mvn test -DsuiteXmlFile=enterprise.xml      # or common.xml / reseller.xml / superadmin.xml
+mvn test -DsuiteXmlFile=enterprise.xml      # or common.xml / reseller.xml / superadmin.xml / ccs.xml
 
 # One class, or one method
 mvn test -Dtest=ResellerDashboardAnalyticsTest
@@ -113,7 +115,7 @@ mvn test -Dtest=LoginTest#testSuperAdminLogin
 mvn test -Dtest=LoginTest -Dbrowser.headless=true
 ```
 
-**Run one test run at a time.** All runs share the same three staging accounts; a second run (or a manual login with the same account) can end the other run's session.
+**Run one test run at a time.** All runs share the same four staging accounts (Super Admin, Enterprise, Reseller, CCS Enterprise); a second run (or a manual login with the same account) can end the other run's session.
 
 ### Jenkins
 
@@ -122,7 +124,7 @@ The pipeline ([Jenkinsfile](Jenkinsfile)) checks out `main`, compiles and runs t
 | Parameter | Default | Purpose |
 |---|---|---|
 | `ALL_TESTS` | off | Tick to run every test case (overrides the group boxes) |
-| `COMMON` / `ENTERPRISE` / `RESELLER` / `SUPER_ADMIN` | off | Tick one or more groups - all ticked groups run together in one build, with one report and one email |
+| `COMMON` / `ENTERPRISE` / `RESELLER` / `SUPER_ADMIN` / `CCS` | off | Tick one or more groups - all ticked groups run together in one build, with one report and one email |
 | `TEST_CLASS` | empty | Optional: run only specific class(es) instead, e.g. `LoginTest`, `LoginTest,SuperAdminDashboardTest`, or `LoginTest#testSuperAdminLogin` |
 
 If nothing is ticked and `TEST_CLASS` is empty, all tests run.
