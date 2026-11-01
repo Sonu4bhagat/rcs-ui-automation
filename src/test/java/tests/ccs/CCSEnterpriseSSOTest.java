@@ -1,11 +1,13 @@
 package tests.ccs;
 
 import base.BaseTest;
+import base.DriverFactory;
 import enums.UserRole;
 import helpers.CCSTestHelper;
 import locators.ccs.CCSLivePageLocators;
 import locators.common.LoginPageLocators;
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import pages.ccs.CCSLivePage;
@@ -187,5 +189,12 @@ public class CCSEnterpriseSSOTest extends BaseTest {
         ccsHelper.switchToTab(ccsWindowHandle);
         Assert.assertTrue(ccsLivePage.waitForLiveDashboard(),
                 "CCS-Live dashboard not shown at the end of the flow. URL: " + ccsLivePage.getSafeCurrentUrl());
+    }
+
+    // Safety net: BaseTest closes the browser in a plain @AfterClass, which TestNG skips when a setup method
+    // fails. alwaysRun closes it in every case; quitDriver does nothing when the browser is already closed.
+    @AfterClass(alwaysRun = true)
+    public void closeBrowser() {
+        DriverFactory.quitDriver();
     }
 }

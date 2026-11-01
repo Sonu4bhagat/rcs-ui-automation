@@ -24,6 +24,17 @@ public class TestUtil {
         return getRandomName(5) + "@example.com";
     }
 
+    /**
+     * Builds a plus-alias of {@code email} with a 6-digit random tag, e.g.
+     * sonu.bhagat+123@altiquence.com -> sonu.bhagat+009212@altiquence.com (any existing +tag is replaced).
+     */
+    public static String getUniqueAliasEmail(String email) {
+        String[] parts = email.split("@", 2);
+        String localPart = parts[0].split("\\+", 2)[0];
+        String tag = String.format("%06d", java.util.concurrent.ThreadLocalRandom.current().nextInt(1_000_000));
+        return localPart + "+" + tag + "@" + parts[1];
+    }
+
     public static String getRandomUrl() {
         return "https://" + getRandomName(5).toLowerCase() + ".com";
     }
