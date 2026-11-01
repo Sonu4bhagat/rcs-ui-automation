@@ -50,7 +50,7 @@ RCS_Automation/
 │   │   ├── enterprise/  tests that log in as an Enterprise user
 │   │   ├── reseller/    tests that log in as a Reseller user
 │   │   ├── superadmin/  tests that log in as Super Admin
-│   │   └── ccs/         CCS project: CCS Enterprise account, SSO to CCS-Live, Users management
+│   │   └── ccs/         CCS project: CCS Enterprise account, SSO to CCS-Live, Users management, Call Flow / Queue
 │   ├── helpers/       Reusable test steps shared across classes
 │   └── api/           REST API tests (not part of the UI suites)
 ├── src/test/resources/config.properties
