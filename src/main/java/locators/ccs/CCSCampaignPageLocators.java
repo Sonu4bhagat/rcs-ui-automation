@@ -26,6 +26,10 @@ public class CCSCampaignPageLocators {
                 return By.xpath("//table//tbody/tr[" + rowIndex + "]//button[.//i[@title='Delete']]");
         }
 
+        public static By getRowEditButton(int rowIndex) {
+                return By.xpath("//table//tbody/tr[" + rowIndex + "]//button[.//i[@title='Edit']]");
+        }
+
         public static By getRowCalendarButton(int rowIndex) {
                 return By.xpath("//table//tbody/tr[" + rowIndex + "]//button[.//i[@title='Calendar']]");
         }

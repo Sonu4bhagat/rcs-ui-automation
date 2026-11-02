@@ -1,12 +1,12 @@
-package tests.ccs;
+package base;
 
-import base.BaseTest;
-import helpers.CCSTestHelper;
 import org.openqa.selenium.WebDriver;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeClass;
 import pages.ccs.CCSLivePage;
+
+import java.util.function.Supplier;
 
 /**
  * Base class of the CCS test classes: one browser and one login for the whole CCS suite.
@@ -61,9 +61,10 @@ public abstract class CCSBaseTest extends BaseTest {
 
     /**
      * Brings the driver to the CCS-Live dashboard and returns its tab: reuses the signed-in CCS-Live tab when there
-     * is one (no login), otherwise logs in (if needed) and SSOs into CCS-Live once.
+     * is one (no login), otherwise runs {@code signIn} once - logs in (if needed) and SSOs into CCS-Live, returning
+     * the CCS-Live tab (the test classes pass CCSTestHelper::openCCSLiveDashboard).
      */
-    protected String openCCSLiveDashboard(CCSTestHelper helper, CCSLivePage livePage) {
+    protected String openCCSLiveDashboard(Supplier<String> signIn, CCSLivePage livePage) {
         if (sharedCCSLiveTab != null && driver.getWindowHandles().contains(sharedCCSLiveTab)) {
             driver.switchTo().window(sharedCCSLiveTab);
             driver.get(CCSLivePage.getConfiguredUrl());
@@ -73,10 +74,10 @@ public abstract class CCSBaseTest extends BaseTest {
             }
             System.out.println("[CCS] CCS-Live session has ended - signing in again");
         }
-        // Start from the first (Vault) tab: CCSTestHelper logs in only when the Vault login form is shown
+        // Start from the first (Vault) tab: the sign-in step logs in only when the Vault login form is shown
         driver.switchTo().window(driver.getWindowHandles().iterator().next());
         driver.get(utils.ConfigReader.get("url"));
-        String tab = helper.openCCSLiveDashboard();
+        String tab = signIn.get();
         rememberCCSLiveTab(tab);
         return tab;
     }

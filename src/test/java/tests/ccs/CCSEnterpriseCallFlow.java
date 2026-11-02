@@ -1,5 +1,6 @@
 package tests.ccs;
 
+import base.CCSBaseTest;
 import helpers.CCSTestHelper;
 import locators.ccs.CCSQueuePageLocators;
 import org.testng.Assert;
@@ -50,7 +51,7 @@ public class CCSEnterpriseCallFlow extends CCSBaseTest {
         ccsLivePage = new CCSLivePage(driver);
         queuePage = new CCSQueuePage(driver);
         retainSession = true; // stay on the CCS-Live tab between tests
-        openCCSLiveDashboard(ccsHelper, ccsLivePage);
+        openCCSLiveDashboard(ccsHelper::openCCSLiveDashboard, ccsLivePage);
         partBAgentName = ccsHelper.getPartBAgentName(new CCSUsersPage(driver), ConfigReader.get("ccs.users.email"));
     }
 

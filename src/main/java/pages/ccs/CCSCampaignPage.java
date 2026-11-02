@@ -93,7 +93,7 @@ public class CCSCampaignPage {
         if (searchCampaignsByName(name) != 1) {
             throw new IllegalStateException("Expected exactly one campaign named " + name);
         }
-        jsClick(wait.until(ExpectedConditions.presenceOfElementLocated(CCSCampaignPageLocators.getRowDeleteButton(1))));
+        clickRowButton(CCSCampaignPageLocators.getRowDeleteButton(1));
         String confirmText = listPage.confirmDialog(10);
         String result = listPage.waitForNotification(10);
         listPage.closeDialogIfShown();
@@ -242,7 +242,7 @@ public class CCSCampaignPage {
     public void clickCalendarAtRow(int rowIndex) {
         ExtentReportManager.logStep("Click the Calendar icon of campaign row " + rowIndex);
         listPage.closeDialogIfShown(); // a leftover success popup would cover the schedule dialog
-        jsClick(wait.until(ExpectedConditions.presenceOfElementLocated(CCSCampaignPageLocators.getRowCalendarButton(rowIndex))));
+        clickRowButton(CCSCampaignPageLocators.getRowCalendarButton(rowIndex));
         wait.until(ExpectedConditions.visibilityOfElementLocated(CCSCampaignPageLocators.SCHEDULE_DATE_RANGE_INPUT));
         // The dialog animates in and then loads the campaign's schedule (the date range is pre-filled); a click
         // before that is lost, so wait until the date range is filled in
@@ -386,6 +386,14 @@ public class CCSCampaignPage {
         } catch (TimeoutException e) {
             System.out.println("[WARN] Earlier notification still shown: " + getNotifications());
         }
+    }
+
+    // The list re-renders after a search, so a row button found a moment ago can be stale: find it again and retry
+    private void clickRowButton(By button) {
+        wait.ignoring(StaleElementReferenceException.class).until(d -> {
+            jsClick(d.findElement(button));
+            return true;
+        });
     }
 
     // A sticky footer covers the lower part of CCS-Live pages, so a normal click is intercepted

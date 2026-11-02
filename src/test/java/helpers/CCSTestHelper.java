@@ -44,6 +44,8 @@ public class CCSTestHelper {
     private static volatile String createdQueueName;
     // Campaign created by CCSEnterpriseCampaign (Part D) in this execution - reused by Part E
     private static volatile String createdCampaignName;
+    // Set when every test of CCSEnterpriseAgentTab (Part E) passed in this execution - CCSCleanup runs only then
+    private static volatile boolean agentTabCompleted;
 
     public CCSTestHelper(WebDriver driver) {
         this.driver = driver;
@@ -114,8 +116,18 @@ public class CCSTestHelper {
      * verifies. Leaves the driver on the CCS-Live dashboard tab and returns its handle.
      */
     public String openCCSLiveDashboard() {
-        // Log in only when the Vault login form is shown - a browser already signed in goes straight to Services
-        if (!driver.findElements(locators.common.LoginPageLocators.EMAIL_INPUT).isEmpty()) {
+        // Log in only when the Vault login form is shown - a browser already signed in goes straight to Services.
+        // Wait until the page shows one or the other: the login form is drawn a moment after the page loads.
+        boolean loginFormShown = new WebDriverWait(driver, Duration.ofSeconds(30)).until(d -> {
+            if (d.findElements(locators.common.LoginPageLocators.EMAIL_INPUT).stream().anyMatch(e -> e.isDisplayed())) {
+                return Boolean.TRUE;
+            }
+            if (!d.findElements(locators.common.LoginPageLocators.ENTERPRISE_DASHBOARD).isEmpty()) {
+                return Boolean.FALSE;
+            }
+            return null; // page still loading - keep waiting
+        });
+        if (loginFormShown) {
             new pages.common.LoginPage(driver).loginWithCCSEnterpriseCredentials();
         } else {
             System.out.println("[CCS] Vault already signed in - no new login");
@@ -240,6 +252,14 @@ public class CCSTestHelper {
         }
         System.out.println("Latest Part B agent in the Users list: " + latestName + " (User Id " + latestId + ")");
         return latestName;
+    }
+
+    public static void markAgentTabCompleted() {
+        agentTabCompleted = true;
+    }
+
+    public static boolean isAgentTabCompleted() {
+        return agentTabCompleted;
     }
 
     /** Records the campaign created by Part D so Part E reuses it instead of creating another. */

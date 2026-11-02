@@ -38,10 +38,17 @@
         </classes>
     </test>
 
-    <!-- Part E: Agent tab - Part B agent logs in with WebRTC and the Part D campaign; then deletes this run's campaign, queue and agent -->
+    <!-- Part E: Agent tab - Part B agent logs in with WebRTC and the Part D campaign -->
     <test name="CCS Enterprise Agent Tab" preserve-order="true">
         <classes>
             <class name="tests.ccs.CCSEnterpriseAgentTab"/>
+        </classes>
+    </test>
+
+    <!-- Cleanup: deletes this execution's campaign, queue and agent - runs only when CCS Enterprise Agent Tab passed -->
+    <test name="CCS Cleanup" preserve-order="true">
+        <classes>
+            <class name="tests.ccs.CCSCleanup"/>
         </classes>
     </test>
 </suite>

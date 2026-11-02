@@ -1,5 +1,6 @@
 package tests.ccs;
 
+import base.CCSBaseTest;
 import helpers.CCSTestHelper;
 import locators.ccs.CCSCampaignPageLocators;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -54,7 +55,7 @@ public class CCSEnterpriseCampaign extends CCSBaseTest {
         ccsLivePage = new CCSLivePage(driver);
         campaignPage = new CCSCampaignPage(driver);
         retainSession = true; // stay on the CCS-Live tab between tests
-        openCCSLiveDashboard(ccsHelper, ccsLivePage);
+        openCCSLiveDashboard(ccsHelper::openCCSLiveDashboard, ccsLivePage);
         partCQueueName = ccsHelper.getPartCQueueName(new CCSQueuePage(driver), "CCS Queue", "Created by CCS automation");
     }
 

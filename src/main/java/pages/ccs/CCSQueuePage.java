@@ -98,7 +98,7 @@ public class CCSQueuePage {
         if (searchQueuesByName(name) != 1) {
             throw new IllegalStateException("Expected exactly one queue named " + name);
         }
-        jsClick(wait.until(ExpectedConditions.presenceOfElementLocated(CCSQueuePageLocators.getRowDeleteButton(1))));
+        clickRowButton(CCSQueuePageLocators.getRowDeleteButton(1));
         String confirmText = listPage.confirmDialog(10);
         String result = listPage.waitForNotification(10);
         listPage.closeDialogIfShown();
@@ -107,7 +107,7 @@ public class CCSQueuePage {
 
     public void clickEditAtRow(int rowIndex) {
         ExtentReportManager.logStep("Click Edit on queue row " + rowIndex);
-        jsClick(wait.until(ExpectedConditions.presenceOfElementLocated(CCSQueuePageLocators.getRowEditButton(rowIndex))));
+        clickRowButton(CCSQueuePageLocators.getRowEditButton(rowIndex));
         wait.until(ExpectedConditions.visibilityOfElementLocated(CCSQueuePageLocators.NAME_INPUT));
         // The edit form loads the saved values asynchronously
         wait.until(d -> !d.findElement(CCSQueuePageLocators.NAME_INPUT).getAttribute("value").isEmpty());
@@ -257,6 +257,14 @@ public class CCSQueuePage {
         String message = getNotifications();
         System.out.println("[INFO] After Save - URL: " + CCSLivePage.stripQuery(driver.getCurrentUrl()) + " Message: " + message);
         return message;
+    }
+
+    // The list re-renders after a search, so a row button found a moment ago can be stale: find it again and retry
+    private void clickRowButton(By button) {
+        wait.ignoring(StaleElementReferenceException.class).until(d -> {
+            jsClick(d.findElement(button));
+            return true;
+        });
     }
 
     // A sticky footer covers the lower part of CCS-Live pages, so a normal click is intercepted

@@ -1,5 +1,6 @@
 package tests.ccs;
 
+import base.CCSBaseTest;
 import enums.UserRole;
 import helpers.CCSTestHelper;
 import locators.ccs.CCSLivePageLocators;

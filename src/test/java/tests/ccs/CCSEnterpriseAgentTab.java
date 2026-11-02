@@ -1,5 +1,6 @@
 package tests.ccs;
 
+import base.CCSBaseTest;
 import helpers.CCSTestHelper;
 import locators.ccs.CCSAgentLoginPageLocators;
 import locators.ccs.CCSUsersPageLocators;
@@ -10,7 +11,6 @@ import org.testng.annotations.Test;
 import pages.ccs.CCSAgentLoginPage;
 import pages.ccs.CCSCampaignPage;
 import pages.ccs.CCSLivePage;
-import pages.ccs.CCSQueuePage;
 import pages.ccs.CCSUsersPage;
 import utils.ConfigReader;
 import utils.ExtentReportManager;
@@ -21,11 +21,11 @@ import java.util.Set;
 
 /**
  * CCS Part E - Agent tab: log the Part B agent in from the Users list (row action "Login") with WebRTC and the
- * Part D campaign, and verify the Agent Live Dashboard. Then clean up the test data created by this execution
- * (Part D campaign, Part C queue, Part B agent).
+ * Part D campaign, and verify the Agent Live Dashboard. The test data is deleted afterwards by CCSCleanup, which
+ * runs only when all tests of this class passed.
  * Starts on the CCS-Live dashboard: the class setup logs in with the CCS credentials and SSOs into CCS-Live
  * (the flow verified in Part A, reused through CCSTestHelper - not re-tested here). No user, queue or campaign is
- * created here. Tests run as one chain in the written order; the cleanup tests run even when an earlier test fails.
+ * created here. Tests run as one chain in the written order.
  */
 public class CCSEnterpriseAgentTab extends CCSBaseTest {
 
@@ -44,7 +44,6 @@ public class CCSEnterpriseAgentTab extends CCSBaseTest {
     private String campaignName;
     private String adminTab;
     private int agentRow = -1;
-    private boolean agentLoginOpened;
 
     @BeforeClass
     public void openCCSLiveDashboard() {
@@ -53,7 +52,7 @@ public class CCSEnterpriseAgentTab extends CCSBaseTest {
         usersPage = new CCSUsersPage(driver);
         agentLoginPage = new CCSAgentLoginPage(driver);
         retainSession = true; // stay on the CCS-Live tab between tests
-        adminTab = openCCSLiveDashboard(ccsHelper, ccsLivePage);
+        adminTab = openCCSLiveDashboard(ccsHelper::openCCSLiveDashboard, ccsLivePage);
         agentName = ccsHelper.getPartBAgentName(usersPage, ConfigReader.get("ccs.users.email"));
         agentEmail = CCSTestHelper.getCreatedAgentEmail(); // known only when Part B ran in this execution
         campaignName = ccsHelper.getPartDCampaignName(new CCSCampaignPage(driver), "CCS Campaign");
@@ -69,7 +68,8 @@ public class CCSEnterpriseAgentTab extends CCSBaseTest {
         List<String> headers = usersPage.getTableHeaders();
         Assert.assertTrue(headers.containsAll(List.of(CCSUsersPageLocators.COL_NAME, CCSUsersPageLocators.COL_USERNAME,
                 CCSUsersPageLocators.COL_ROLE, CCSUsersPageLocators.COL_ACTION)), "Users list columns missing. Found: " + headers);
-        Assert.assertTrue(usersPage.getRowCount() > 0, "Users list is empty");
+        // An empty list is valid (e.g. after a cleanup) - the agent itself is checked in TC-29
+        System.out.println("Users listed: " + usersPage.getRowCount());
     }
 
     @Test(priority = 2, description = "TC-29: The agent created in Part B is found with its details", dependsOnMethods = "testNavigateToUsers")
@@ -92,6 +92,8 @@ public class CCSEnterpriseAgentTab extends CCSBaseTest {
         Assert.assertEquals(usersPage.getCellText(agentRow, CCSUsersPageLocators.COL_STATUS), "Active", "Status");
         if (agentEmail != null) {
             Assert.assertEquals(usersPage.getCellText(agentRow, CCSUsersPageLocators.COL_USERNAME), agentEmail, "Username");
+        } else {
+            agentEmail = usersPage.getCellText(agentRow, CCSUsersPageLocators.COL_USERNAME); // agent from an earlier run
         }
     }
 
@@ -117,7 +119,6 @@ public class CCSEnterpriseAgentTab extends CCSBaseTest {
         List<String> newTabs = ccsLivePage.waitForNewTabs(tabsBefore);
         Assert.assertEquals(newTabs.size(), 1, "Login should open exactly one tab");
         driver.switchTo().window(newTabs.get(0));
-        agentLoginOpened = true;
     }
 
     @Test(priority = 5, description = "TC-32: The agent login page shows the login configuration form", dependsOnMethods = "testClickLoginCta")
@@ -177,85 +178,7 @@ public class CCSEnterpriseAgentTab extends CCSBaseTest {
         Assert.assertTrue(headings.containsAll(EXPECTED_DASHBOARD_SECTIONS), "Agent dashboard sections missing. Found: " + headings);
         Assert.assertTrue(agentLoginPage.isDisplayed(CCSAgentLoginPageLocators.SWITCH_CAMPAIGN_BUTTON), "Switch Campaign not displayed");
         Assert.assertNull(ccsLivePage.findErrorPageText(), "Error page shown on the Agent Live Dashboard");
-    }
-
-    // ==================== Cleanup (runs after all tests above, even when one failed) ====================
-    // Deletes only what Parts B, C and D created in THIS execution, in dependency order: campaign (uses the queue),
-    // queue (holds the agent), agent.
-
-    @Test(priority = 10, description = "Cleanup 1/3: Delete the campaign created by Part D in this execution", dependsOnMethods = "testAgentLiveDashboard", alwaysRun = true)
-    public void testDeletePartDCampaign() {
-        String name = CCSTestHelper.getCreatedCampaignName();
-        if (name == null) {
-            throw new SkipException("No campaign was created by Part D in this execution - nothing to delete");
-        }
-        backToAdminTab();
-        CCSCampaignPage campaignPage = new CCSCampaignPage(driver);
-        campaignPage.openCampaignTab();
-        String messages = campaignPage.deleteCampaign(name);
-        System.out.println("Delete campaign " + name + ": " + messages);
-        // The Campaign list keeps showing a deleted campaign until the page is reloaded - reload before each check
-        Assert.assertEquals(ccsHelper.waitUntilNotListed(() -> {
-            ccsLivePage.refresh();
-            campaignPage.waitForCampaignList();
-            return campaignPage.searchCampaignsByName(name);
-        }, 60), 0, "Campaign still listed after delete: " + name + " (" + messages + ")");
-        ExtentReportManager.logPass("Deleted campaign " + name);
-    }
-
-    @Test(priority = 11, description = "Cleanup 2/3: Delete the queue created by Part C in this execution", dependsOnMethods = "testDeletePartDCampaign", alwaysRun = true)
-    public void testDeletePartCQueue() {
-        String name = CCSTestHelper.getCreatedQueueName();
-        if (name == null) {
-            throw new SkipException("No queue was created by Part C in this execution - nothing to delete");
-        }
-        backToAdminTab();
-        CCSQueuePage queuePage = new CCSQueuePage(driver);
-        queuePage.openCallFlow();
-        queuePage.openQueueTab();
-        String messages = queuePage.deleteQueue(name);
-        System.out.println("Delete queue " + name + ": " + messages);
-        Assert.assertEquals(ccsHelper.waitUntilNotListed(() -> queuePage.searchQueuesByName(name), 20), 0,
-                "Queue still listed after delete: " + name + " (" + messages + ")");
-        ExtentReportManager.logPass("Deleted queue " + name);
-    }
-
-    @Test(priority = 12, description = "Cleanup 3/3: Delete the agent created by Part B in this execution", dependsOnMethods = "testDeletePartCQueue", alwaysRun = true)
-    public void testDeletePartBAgent() {
-        String email = CCSTestHelper.getCreatedAgentEmail();
-        if (email == null) {
-            throw new SkipException("No agent was created by Part B in this execution - nothing to delete");
-        }
-        backToAdminTab();
-        if (!usersPage.isOnUsersList()) {
-            usersPage.openUsersTab();
-        }
-        int rows = usersPage.searchUsers(CCSUsersPageLocators.SEARCH_BY_USER_NAME, email);
-        Assert.assertEquals(rows, 1, "Expected exactly one user " + email);
-        String deleted = usersPage.deleteUserAtRow(1);
-        Assert.assertEquals(deleted, email, "Deleted a different user");
-        usersPage.clearSearch();
-        Assert.assertEquals(ccsHelper.waitUntilNotListed(() -> usersPage.searchUsers(CCSUsersPageLocators.SEARCH_BY_USER_NAME, email), 20), 0,
-                "Agent still listed after delete: " + email);
-        usersPage.clearSearch();
-        ExtentReportManager.logPass("Deleted agent " + email);
-    }
-
-    /** Closes the agent tab (if open) and returns to the admin's CCS-Live tab. */
-    private void backToAdminTab() {
-        Assert.assertNotNull(adminTab, "CCS-Live admin tab not opened");
-        try {
-            if (agentLoginOpened) {
-                for (String handle : driver.getWindowHandles()) {
-                    if (!handle.equals(adminTab) && driver.switchTo().window(handle).getCurrentUrl().contains("/agent/")) {
-                        driver.close();
-                    }
-                }
-                agentLoginOpened = false;
-            }
-        } finally {
-            // Always end on the admin tab - never leave the driver pointing at a closed tab
-            driver.switchTo().window(adminTab);
-        }
+        // Reached only when TC-28 to TC-35 passed (one dependency chain): CCSCleanup may now delete the test data
+        CCSTestHelper.markAgentTabCompleted();
     }
 }
