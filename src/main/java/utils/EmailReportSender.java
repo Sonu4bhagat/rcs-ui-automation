@@ -262,7 +262,8 @@ public class EmailReportSender implements IReporter {
         }
 
         private static String describeSuite(String suite) {
-            switch (suite) {
+            // Suite files are passed with their folder (src/test/resources/suites/ccs.xml) - match on the file name
+            switch (suite.replaceAll(".*[/\\\\]", "")) {
                 case "All Tests": case "testng.xml": return "Full regression - all portals (testng.xml)";
                 case "Common": case "common.xml": return "Common tests - all roles (common.xml)";
                 case "Enterprise": case "enterprise.xml": return "Enterprise portal (enterprise.xml)";

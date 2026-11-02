@@ -53,13 +53,15 @@ RCS_Automation/
 │   │   └── ccs/         CCS project: CCS Enterprise account, SSO to CCS-Live, Users management, Call Flow / Queue
 │   ├── helpers/       Reusable test steps shared across classes
 │   └── api/           REST API tests (not part of the UI suites)
-├── src/test/resources/config.properties
-├── testng.xml         Full suite (all roles)
-├── common.xml         Common suite (tests covering all roles)
-├── enterprise.xml     Enterprise suite
-├── reseller.xml       Reseller suite
-├── superadmin.xml     Super Admin suite
-├── ccs.xml            CCS project suite
+├── src/test/resources/
+│   ├── config.properties
+│   └── suites/        TestNG suite files (used by Jenkins and Maven)
+│       ├── testng.xml       Full suite (all roles) - default for a plain "mvn test"
+│       ├── common.xml       Common suite (tests covering all roles)
+│       ├── enterprise.xml   Enterprise suite
+│       ├── reseller.xml     Reseller suite
+│       ├── superadmin.xml   Super Admin suite
+│       └── ccs.xml          CCS project suite
 ├── Jenkinsfile        CI pipeline
 └── pom.xml
 ```
@@ -69,7 +71,7 @@ RCS_Automation/
 1. Put the class in the folder of the user it **logs in as**: `tests/enterprise`, `tests/reseller` or `tests/superadmin`. Use `tests/common` only for tests that cover several roles.
 2. Set the package to match the folder, e.g. `package tests.reseller;`, and prefix the class name with the role, e.g. `ResellerDashboardWalletTest`.
 3. Put its page and locator classes in the **same role folder** under `pages/` and `locators/`. A page used by more than one role goes in `common/`.
-4. Register the class in `testng.xml` **and** in that role's suite file.
+4. Register the class in `src/test/resources/suites/testng.xml` **and** in that role's suite file in the same folder.
 5. Classes that keep one login across tests (`retainSession = true`) should also set `sessionRole` (see [Session recovery](#session-recovery)).
 
 The Extent report and the email group results by role automatically, based on the folder.
@@ -102,10 +104,10 @@ Settings are read from `src/test/resources/config.properties`. Any key can be ov
 
 ```bash
 # Full suite (all roles)
-mvn clean test -DsuiteXmlFile=testng.xml
+mvn clean test                                                      # default: src/test/resources/suites/testng.xml
 
 # One role
-mvn test -DsuiteXmlFile=enterprise.xml      # or common.xml / reseller.xml / superadmin.xml / ccs.xml
+mvn test -DsuiteXmlFile=src/test/resources/suites/enterprise.xml    # or common.xml / reseller.xml / superadmin.xml / ccs.xml
 
 # One class, or one method
 mvn test -Dtest=ResellerDashboardAnalyticsTest

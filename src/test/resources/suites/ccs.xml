@@ -3,7 +3,7 @@
 <!--
     CCS suite: all classes in src/test/java/tests/ccs (CCS project, own Enterprise account - enums.CCSUser).
     Each class is its own <test>, so classes run one after another.
-    Run: mvn test -DsuiteXmlFile=ccs.xml
+    Run: mvn test -DsuiteXmlFile=src/test/resources/suites/ccs.xml
 -->
 <suite name="CCS Automation Suite" verbose="1" parallel="classes" thread-count="4">
     <listeners>

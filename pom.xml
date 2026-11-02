@@ -16,7 +16,8 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <suiteXmlFile>testng.xml</suiteXmlFile>
+        <!-- Default suite for a plain "mvn test"; all suite files are in src/test/resources/suites -->
+        <suiteXmlFile>src/test/resources/suites/testng.xml</suiteXmlFile>
         <suite.threads>3</suite.threads>
     </properties>
 
