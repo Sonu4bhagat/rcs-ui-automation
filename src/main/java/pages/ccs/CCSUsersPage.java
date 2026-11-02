@@ -80,9 +80,10 @@ public class CCSUsersPage {
         WebElement search = driver.findElement(CCSUsersPageLocators.SEARCH_INPUT);
         search.sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.DELETE);
         search.sendKeys(text, Keys.ENTER);
-        // The list reloads asynchronously: wait until every row matches the search, or no row is left
+        // The list reloads asynchronously: wait until every row matches the search, or no row is left.
+        // Rows replaced while being read (stale) just mean the list is still re-rendering - check again.
         try {
-            new WebDriverWait(driver, Duration.ofSeconds(15)).until(d -> {
+            new WebDriverWait(driver, Duration.ofSeconds(15)).ignoring(StaleElementReferenceException.class).until(d -> {
                 List<WebElement> rows = d.findElements(CCSUsersPageLocators.TABLE_ROWS);
                 return rows.isEmpty() || rows.stream().allMatch(r -> r.getText().toLowerCase().contains(text.toLowerCase()));
             });
@@ -174,6 +175,50 @@ public class CCSUsersPage {
         } catch (TimeoutException e) {
             System.out.println("[WARN] Dialog still shown");
         }
+    }
+
+    /**
+     * Waits up to {@code seconds} for a confirmation dialog (e.g. "Agent Already Logged In" with "Yes, proceed!",
+     * or a delete confirmation) and confirms it. Returns the dialog text, or "" when no dialog appeared.
+     */
+    public String confirmDialog(int seconds) {
+        try {
+            WebElement confirm = new WebDriverWait(driver, Duration.ofSeconds(seconds)).until(
+                    d -> d.findElements(CCSUsersPageLocators.CONFIRM_DIALOG_BUTTON).stream()
+                            .filter(WebElement::isDisplayed).findFirst().orElse(null));
+            String text = getNotifications();
+            System.out.println("[INFO] Confirming dialog '" + text + "' with '" + confirm.getText().trim() + "'");
+            jsClick(confirm);
+            // A click while the dialog is still animating in can be lost - click once more if it is still open
+            try {
+                new WebDriverWait(driver, Duration.ofSeconds(5)).until(d -> !confirm.isDisplayed());
+            } catch (TimeoutException | StaleElementReferenceException e) {
+                if (e instanceof TimeoutException) {
+                    System.out.println("[INFO] Dialog still open - confirming again");
+                    jsClick(confirm);
+                }
+            }
+            return text;
+        } catch (TimeoutException e) {
+            return "";
+        }
+    }
+
+    /** Opens the row's action menu (three dots) and returns its entries, e.g. [Login, Change Password, Edit, ...]. */
+    public List<String> openRowActions(int rowIndex) {
+        jsClick(wait.until(ExpectedConditions.presenceOfElementLocated(CCSUsersPageLocators.getRowActionMenu(rowIndex))));
+        wait.until(d -> d.findElements(CCSUsersPageLocators.getRowActionItems(rowIndex)).stream().anyMatch(WebElement::isDisplayed));
+        List<String> actions = new ArrayList<>();
+        for (WebElement item : driver.findElements(CCSUsersPageLocators.getRowActionItems(rowIndex))) {
+            actions.add(item.getText().trim());
+        }
+        return actions;
+    }
+
+    /** Clicks an entry of the row's action menu (the menu must be open, see {@link #openRowActions}). */
+    public void clickRowAction(int rowIndex, String action) {
+        ExtentReportManager.logStep("Click '" + action + "' in the action menu of row " + rowIndex);
+        jsClick(wait.until(ExpectedConditions.presenceOfElementLocated(CCSUsersPageLocators.getRowAction(rowIndex, action))));
     }
 
     // ==================== Add User Form ====================

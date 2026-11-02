@@ -1,11 +1,8 @@
 package tests.ccs;
 
-import base.BaseTest;
-import base.DriverFactory;
 import helpers.CCSTestHelper;
 import locators.ccs.CCSUsersPageLocators;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import pages.ccs.CCSLivePage;
@@ -23,7 +20,7 @@ import java.util.List;
  * Starts on the CCS-Live dashboard: the class setup logs in with the CCS credentials and SSOs into CCS-Live
  * (the flow verified in Part A, reused through CCSTestHelper - not re-tested here). No logout at the end.
  */
-public class CCSEnterpriseUsers extends BaseTest {
+public class CCSEnterpriseUsers extends CCSBaseTest {
 
     private static final List<String> EXPECTED_ROLES = Arrays.asList("Agent", "Ai Agent", "Team Lead", "Operator",
             "Voice Logger", "Campaign Supervisor");
@@ -50,13 +47,7 @@ public class CCSEnterpriseUsers extends BaseTest {
         ccsLivePage = new CCSLivePage(driver);
         usersPage = new CCSUsersPage(driver);
         retainSession = true; // stay on the CCS-Live tab between tests
-        try {
-            ccsHelper.openCCSLiveDashboard();
-        } catch (RuntimeException | AssertionError e) {
-            // TestNG skips @AfterClass when @BeforeClass fails - close the browser here (same as BaseTest)
-            DriverFactory.quitDriver();
-            throw e;
-        }
+        openCCSLiveDashboard(ccsHelper, ccsLivePage);
     }
 
     // ==================== Scenario 4: Users Tab ====================
@@ -330,12 +321,5 @@ public class CCSEnterpriseUsers extends BaseTest {
         ccsLivePage.refresh();
         usersPage.waitForUsersList();
         ccsHelper.verifyUserListedOnce(usersPage, newUserName, newUserContact, newUserEmail);
-    }
-
-    // Safety net: BaseTest closes the browser in a plain @AfterClass, which TestNG skips when a setup method
-    // fails. alwaysRun closes it in every case; quitDriver does nothing when the browser is already closed.
-    @AfterClass(alwaysRun = true)
-    public void closeBrowser() {
-        DriverFactory.quitDriver();
     }
 }

@@ -1,13 +1,10 @@
 package tests.ccs;
 
-import base.BaseTest;
-import base.DriverFactory;
 import enums.UserRole;
 import helpers.CCSTestHelper;
 import locators.ccs.CCSLivePageLocators;
 import locators.common.LoginPageLocators;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import pages.ccs.CCSLivePage;
@@ -24,7 +21,7 @@ import java.util.List;
  * Flow: Vault login -> Services -> CCS -> SSO icon -> new tab -> CCS-Live live dashboard.
  * Valid CCS credentials only - login negatives are covered by LoginTest.
  */
-public class CCSEnterpriseSSOTest extends BaseTest {
+public class CCSEnterpriseSSOTest extends CCSBaseTest {
 
     private LoginPage loginPage;
     private ServicesPage servicesPage;
@@ -129,6 +126,7 @@ public class CCSEnterpriseSSOTest extends BaseTest {
         Assert.assertEquals(newTabs.size(), 1, "One CCS SSO click should open exactly one tab");
 
         ccsWindowHandle = newTabs.get(0);
+        rememberCCSLiveTab(ccsWindowHandle); // the later CCS parts continue on this signed-in tab
         ccsHelper.switchToTab(ccsWindowHandle);
         Assert.assertTrue(ccsLivePage.waitForLiveDashboard(),
                 "SSO did not reach the CCS-Live dashboard. URL: " + ccsLivePage.getSafeCurrentUrl());
@@ -189,12 +187,5 @@ public class CCSEnterpriseSSOTest extends BaseTest {
         ccsHelper.switchToTab(ccsWindowHandle);
         Assert.assertTrue(ccsLivePage.waitForLiveDashboard(),
                 "CCS-Live dashboard not shown at the end of the flow. URL: " + ccsLivePage.getSafeCurrentUrl());
-    }
-
-    // Safety net: BaseTest closes the browser in a plain @AfterClass, which TestNG skips when a setup method
-    // fails. alwaysRun closes it in every case; quitDriver does nothing when the browser is already closed.
-    @AfterClass(alwaysRun = true)
-    public void closeBrowser() {
-        DriverFactory.quitDriver();
     }
 }

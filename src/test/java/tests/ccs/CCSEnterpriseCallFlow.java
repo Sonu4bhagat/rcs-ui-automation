@@ -1,12 +1,9 @@
 package tests.ccs;
 
-import base.BaseTest;
-import base.DriverFactory;
 import helpers.CCSTestHelper;
 import locators.ccs.CCSQueuePageLocators;
 import org.testng.Assert;
 import org.testng.SkipException;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import pages.ccs.CCSLivePage;
@@ -25,7 +22,7 @@ import java.util.List;
  * (the flow verified in Part A, reused through CCSTestHelper - not re-tested here). No agent is created here.
  * Tests run as one chain in the written order (each depends on the previous one); no logout at the end.
  */
-public class CCSEnterpriseCallFlow extends BaseTest {
+public class CCSEnterpriseCallFlow extends CCSBaseTest {
 
     private static final String ALGORITHM = "Even Call Distribution";
     private static final String CALL_WAITING_TYPE = "Queue";
@@ -53,14 +50,8 @@ public class CCSEnterpriseCallFlow extends BaseTest {
         ccsLivePage = new CCSLivePage(driver);
         queuePage = new CCSQueuePage(driver);
         retainSession = true; // stay on the CCS-Live tab between tests
-        try {
-            ccsHelper.openCCSLiveDashboard();
-            partBAgentName = ccsHelper.getPartBAgentName(new CCSUsersPage(driver), ConfigReader.get("ccs.users.email"));
-        } catch (RuntimeException | AssertionError e) {
-            // TestNG skips @AfterClass when @BeforeClass fails - close the browser here (same as BaseTest)
-            DriverFactory.quitDriver();
-            throw e;
-        }
+        openCCSLiveDashboard(ccsHelper, ccsLivePage);
+        partBAgentName = ccsHelper.getPartBAgentName(new CCSUsersPage(driver), ConfigReader.get("ccs.users.email"));
     }
 
     // ==================== Call Flow and Queue navigation ====================
@@ -190,6 +181,7 @@ public class CCSEnterpriseCallFlow extends BaseTest {
         Assert.assertFalse(queuePage.isOnAddQueueForm(), "Queue was not saved - still on the Add Queue form. Message: [" + message + "]");
         Assert.assertFalse(message.toLowerCase().matches(".*(error|fail|invalid|already|exist|please).*"), "Save reported a problem: " + message);
         queueCreated = true;
+        CCSTestHelper.rememberCreatedQueue(queueName); // reused by Part D (CCSEnterpriseCampaign)
         ExtentReportManager.logPass("Queue saved: " + queueName + (message.isEmpty() ? "" : " - " + message));
     }
 
@@ -226,12 +218,5 @@ public class CCSEnterpriseCallFlow extends BaseTest {
         } finally {
             queuePage.openQueueTab(); // leave the Edit form without saving
         }
-    }
-
-    // Safety net: BaseTest closes the browser in a plain @AfterClass, which TestNG skips when a setup method
-    // fails. alwaysRun closes it in every case; quitDriver does nothing when the browser is already closed.
-    @AfterClass(alwaysRun = true)
-    public void closeBrowser() {
-        DriverFactory.quitDriver();
     }
 }

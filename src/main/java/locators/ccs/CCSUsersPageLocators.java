@@ -42,6 +42,15 @@ public class CCSUsersPageLocators {
                 return By.xpath("//table//tbody/tr[" + rowIndex + "]//a[contains(@class, 'dropdown-item') and normalize-space()='Delete']");
         }
 
+        // Any entry of the row action menu (Login, Change Password, Edit, Delete, ...)
+        public static By getRowActionItems(int rowIndex) {
+                return By.xpath("//table//tbody/tr[" + rowIndex + "]//ul[contains(@class, 'dropdown-menu')]//a[contains(@class, 'dropdown-item')]");
+        }
+
+        public static By getRowAction(int rowIndex, String action) {
+                return By.xpath("//table//tbody/tr[" + rowIndex + "]//a[contains(@class, 'dropdown-item') and normalize-space()='" + action + "']");
+        }
+
         // Confirmation dialog button after Delete (if the app asks for confirmation)
         public static final By CONFIRM_DIALOG_BUTTON = By.xpath(
                         "//*[contains(@class, 'modal') or contains(@class, 'swal2') or @role='dialog']"

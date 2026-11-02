@@ -89,6 +89,22 @@ public class CCSQueuePage {
         return listPage.getNotifications();
     }
 
+    /**
+     * Deletes the queue named {@code name} (exactly one match expected) and confirms the dialog.
+     * Returns the messages shown (confirmation dialog | result).
+     */
+    public String deleteQueue(String name) {
+        ExtentReportManager.logStep("Delete queue " + name);
+        if (searchQueuesByName(name) != 1) {
+            throw new IllegalStateException("Expected exactly one queue named " + name);
+        }
+        jsClick(wait.until(ExpectedConditions.presenceOfElementLocated(CCSQueuePageLocators.getRowDeleteButton(1))));
+        String confirmText = listPage.confirmDialog(10);
+        String result = listPage.waitForNotification(10);
+        listPage.closeDialogIfShown();
+        return confirmText + " | " + result;
+    }
+
     public void clickEditAtRow(int rowIndex) {
         ExtentReportManager.logStep("Click Edit on queue row " + rowIndex);
         jsClick(wait.until(ExpectedConditions.presenceOfElementLocated(CCSQueuePageLocators.getRowEditButton(rowIndex))));

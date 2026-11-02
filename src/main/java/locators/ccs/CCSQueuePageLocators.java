@@ -27,6 +27,10 @@ public class CCSQueuePageLocators {
         public static final String COL_CALL_WAITING_TYPE = "Call Waiting Type";
         public static final String COL_ACTION = "Action";
 
+        public static By getRowDeleteButton(int rowIndex) {
+                return By.xpath("//table//tbody/tr[" + rowIndex + "]//button[.//i[@title='Delete']]");
+        }
+
         public static By getRowEditButton(int rowIndex) {
                 return By.xpath("//table//tbody/tr[" + rowIndex + "]//button[.//i[@title='Edit']]");
         }

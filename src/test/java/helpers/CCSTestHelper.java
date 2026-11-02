@@ -40,6 +40,10 @@ public class CCSTestHelper {
     // in the same JVM but in their own browser
     private static volatile String createdAgentName;
     private static volatile String createdAgentEmail;
+    // Queue created by CCSEnterpriseCallFlow (Part C) in this execution - reused by Part D
+    private static volatile String createdQueueName;
+    // Campaign created by CCSEnterpriseCampaign (Part D) in this execution - reused by Part E
+    private static volatile String createdCampaignName;
 
     public CCSTestHelper(WebDriver driver) {
         this.driver = driver;
@@ -110,7 +114,12 @@ public class CCSTestHelper {
      * verifies. Leaves the driver on the CCS-Live dashboard tab and returns its handle.
      */
     public String openCCSLiveDashboard() {
-        new pages.common.LoginPage(driver).loginWithCCSEnterpriseCredentials();
+        // Log in only when the Vault login form is shown - a browser already signed in goes straight to Services
+        if (!driver.findElements(locators.common.LoginPageLocators.EMAIL_INPUT).isEmpty()) {
+            new pages.common.LoginPage(driver).loginWithCCSEnterpriseCredentials();
+        } else {
+            System.out.println("[CCS] Vault already signed in - no new login");
+        }
         openCCSServiceAccountList();
         int row = servicesPage.findFirstNonFailedServiceRow();
         Assert.assertTrue(row != -1, "No non-failed CCS service account found");
@@ -231,6 +240,98 @@ public class CCSTestHelper {
         }
         System.out.println("Latest Part B agent in the Users list: " + latestName + " (User Id " + latestId + ")");
         return latestName;
+    }
+
+    /** Records the campaign created by Part D so Part E reuses it instead of creating another. */
+    public static void rememberCreatedCampaign(String name) {
+        createdCampaignName = name;
+    }
+
+    // Test data created by this execution (null when the part did not create it in this execution) - the only
+    // records Part E's cleanup may delete
+    public static String getCreatedAgentName() {
+        return createdAgentName;
+    }
+
+    public static String getCreatedAgentEmail() {
+        return createdAgentEmail;
+    }
+
+    public static String getCreatedQueueName() {
+        return createdQueueName;
+    }
+
+    public static String getCreatedCampaignName() {
+        return createdCampaignName;
+    }
+
+    /**
+     * Name of the campaign created by Part D: the one created earlier in this execution, otherwise the newest
+     * Running campaign whose name starts with {@code namePrefix}. Returns null when there is none.
+     * Leaves the driver on the Campaign list when it had to look it up.
+     */
+    public String getPartDCampaignName(pages.ccs.CCSCampaignPage campaignPage, String namePrefix) {
+        if (createdCampaignName != null) {
+            System.out.println("Using the campaign created by Part D in this run: " + createdCampaignName);
+            return createdCampaignName;
+        }
+        campaignPage.openCampaignTab();
+        int rows = campaignPage.searchCampaignsByName(namePrefix);
+        for (int row = 1; row <= rows; row++) { // the Campaign list shows the newest campaign first
+            if (campaignPage.getCellText(row, locators.ccs.CCSCampaignPageLocators.COL_STATUS).equalsIgnoreCase("Running")) {
+                String name = campaignPage.getCellText(row, locators.ccs.CCSCampaignPageLocators.COL_CAMPAIGN_NAME);
+                System.out.println("Latest Running Part D campaign in the Campaign list: " + name);
+                campaignPage.clearSearch();
+                return name;
+            }
+        }
+        System.out.println("No Running Part D campaign found in the Campaign list");
+        return null;
+    }
+
+    /**
+     * Re-runs {@code search} until it finds no rows - a list refreshes a moment after a delete, so a single search
+     * right after it can still show the deleted row. Returns the last row count (0 when the record is gone).
+     */
+    public int waitUntilNotListed(java.util.function.IntSupplier search, int seconds) {
+        try {
+            return new WebDriverWait(driver, Duration.ofSeconds(seconds), Duration.ofSeconds(3))
+                    .ignoring(org.openqa.selenium.StaleElementReferenceException.class)
+                    .until(d -> search.getAsInt() == 0 ? 0 : null);
+        } catch (TimeoutException e) {
+            return search.getAsInt();
+        }
+    }
+
+    /** Records the queue created by Part C so Part D reuses it instead of creating another. */
+    public static void rememberCreatedQueue(String name) {
+        createdQueueName = name;
+    }
+
+    /**
+     * Name of the queue created by Part C: the one created earlier in this execution, otherwise the newest queue
+     * created by Part C in an earlier run (name starts with {@code namePrefix}, description starts with
+     * {@code descriptionPrefix} - copies without that description are skipped). Returns null when there is none.
+     * Leaves the driver on the Queue list when it had to look it up.
+     */
+    public String getPartCQueueName(pages.ccs.CCSQueuePage queuePage, String namePrefix, String descriptionPrefix) {
+        if (createdQueueName != null) {
+            System.out.println("Using the queue created by Part C in this run: " + createdQueueName);
+            return createdQueueName;
+        }
+        queuePage.openCallFlow();
+        queuePage.openQueueTab();
+        int rows = queuePage.searchQueuesByName(namePrefix);
+        for (int row = 1; row <= rows; row++) { // the Queue list shows the newest queue first
+            if (queuePage.getCellText(row, locators.ccs.CCSQueuePageLocators.COL_DESCRIPTION).startsWith(descriptionPrefix)) {
+                String name = queuePage.getCellText(row, locators.ccs.CCSQueuePageLocators.COL_NAME);
+                System.out.println("Latest Part C queue in the Queue list: " + name);
+                queuePage.clearSearch();
+                return name;
+            }
+        }
+        System.out.println("No Part C queue found in the Queue list");
+        return null;
     }
 
     /** Asserts exactly one user with {@code email} is listed with the given Name, Contact, Role Agent and WebRTC. */
