@@ -38,7 +38,7 @@ pipeline {
                description: 'Optional - run only specific class(es) instead of the boxes above. e.g. LoginTest  |  LoginTest,SuperAdminDashboardTest  |  LoginTest#testSuperAdminLogin. Leave empty to use the boxes. If nothing is ticked and this is empty, ALL tests run.')
         booleanParam(name: 'HEADLESS', defaultValue: true, description: 'Run browser in headless mode')
         booleanParam(name: 'SEND_EMAIL', defaultValue: true, description: 'Send the execution summary email with the Extent report attached')
-        string(name: 'EMAIL_RECIPIENTS', defaultValue: 'sonu.bhagat@altiquence.com,aryan.sonu7562@gmail.com', description: 'Comma-separated list of report recipients')
+        string(name: 'EMAIL_RECIPIENTS', defaultValue: 'sonu.bhagat@altiquence.com,aryan.sonu7562@gmail.com,rahul.yadav@altiquence.com,amit.verma@altiquence.com', description: 'Comma-separated list of report recipients')
     }
 
     environment {
